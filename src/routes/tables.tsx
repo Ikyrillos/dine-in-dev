@@ -1,0 +1,381 @@
+"use client"
+
+import { ResizableLayout } from "@/components/resizable-layout"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { ArrowLeft, Banknote, BarChart3, Clock, CreditCard, Settings, ShoppingBag, Users } from "lucide-react"
+import { useState } from "react"
+
+
+interface Table {
+  id: number
+  name: string
+  status: "occupied" | "empty" | "reserved"
+  orders?: {
+    id: string
+    item: string
+    quantity: number
+    price: number
+  }[]
+  reservationDetails?: {
+    name: string
+    time: string
+    guests: number
+  }
+}
+
+export const Route = createFileRoute('/tables')({
+  component: TableSelection,
+})
+
+export default function TableSelection() {
+  const navigate = useNavigate()
+  const [selectedTable, setSelectedTable] = useState<Table | null>(null)
+  const [showPaymentOptions, setShowPaymentOptions] = useState(false)
+
+  const tables: Table[] = [
+    {
+      id: 1,
+      name: "Table 1",
+      status: "occupied",
+      orders: [
+        { id: "1", item: "Classic Burger", quantity: 2, price: 12.99 },
+        { id: "2", item: "Caesar Salad", quantity: 1, price: 9.99 },
+      ],
+    },
+    { id: 2, name: "Table 2", status: "empty" },
+    {
+      id: 3,
+      name: "Table 3",
+      status: "occupied",
+      orders: [{ id: "3", item: "Margherita Pizza", quantity: 1, price: 14.99 }],
+    },
+    { id: 4, name: "Table 4", status: "empty" },
+    { id: 5, name: "Table 5", status: "empty" },
+    {
+      id: 6,
+      name: "Table 6",
+      status: "reserved",
+      reservationDetails: {
+        name: "John Smith",
+        time: "7:30 PM",
+        guests: 4,
+      },
+    },
+    { id: 7, name: "Table 7", status: "empty" },
+    { id: 8, name: "Table 8", status: "empty" },
+  ]
+
+  const getTableVariant = (status: string) => {
+    switch (status) {
+      case "occupied":
+        return "bg-primary text-primary-foreground hover:bg-primary/90"
+      case "empty":
+        return "bg-background border-2 border-dashed border-muted-foreground/25 hover:border-primary hover:bg-primary/5"
+      case "reserved":
+        return "bg-amber-100 text-amber-900 border border-amber-200 hover:bg-amber-200"
+      default:
+        return "bg-muted hover:bg-muted/80"
+    }
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "occupied":
+        return (
+          <Badge variant="default" className="bg-green-500">
+            Active
+          </Badge>
+        )
+      case "empty":
+        return <Badge variant="outline">Available</Badge>
+      case "reserved":
+        return (
+          <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+            Reserved
+          </Badge>
+        )
+      default:
+        return null
+    }
+  }
+
+  const handleTableClick = (table: Table) => {
+    if (table.status === "empty") {
+      localStorage.setItem("selectedTable", table.id.toString())
+      navigate({
+        to: "/menu",
+      })
+    } else {
+      setSelectedTable(table)
+      setShowPaymentOptions(false)
+    }
+  }
+
+  const handleOrderForTable = (tableId: number) => {
+    localStorage.setItem("selectedTable", tableId.toString())
+    navigate({
+      to: "/menu",
+    })
+  }
+
+  const handlePickupOrder = () => {
+    localStorage.setItem("orderType", "pickup")
+    localStorage.removeItem("selectedTable")
+    navigate({
+      to: "/menu",
+    })
+  }
+
+  const mainContent = (
+    <>
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-12 w-12 rounded-full">
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src="/placeholder.svg" alt="Profile" />
+                    <AvatarFallback className="bg-primary text-primary-foreground">JD</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="start">
+                <div className="flex items-center justify-start gap-2 p-2">
+                  <div className="flex flex-col space-y-1 leading-none">
+                    <p className="font-medium">John Doe</p>
+                    <p className="w-[200px] truncate text-sm text-muted-foreground">Restaurant Manager</p>
+                  </div>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate({ to: "/menu" })}>
+                  <BarChart3 className="mr-2 h-4 w-4" />
+                  Analytics
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate({ to: "/" })}>Sign out</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Tawila</h1>
+              <p className="text-sm text-slate-600">Restaurant Management</p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Content */}
+      <div className="flex-1 p-6">
+        <Tabs defaultValue="dine-in" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2 mb-8">
+            <TabsTrigger value="dine-in" className="text-base">
+              <Users className="w-4 h-4 mr-2" />
+              Dine-in
+            </TabsTrigger>
+            <TabsTrigger value="pickup" className="text-base">
+              <ShoppingBag className="w-4 h-4 mr-2" />
+              Pickup
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dine-in" className="space-y-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {tables.map((table) => (
+                <Card
+                  key={table.id}
+                  className={`
+                    cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg
+                    ${getTableVariant(table.status)}
+                    ${selectedTable?.id === table.id ? "ring-2 ring-primary ring-offset-2" : ""}
+                  `}
+                  onClick={() => handleTableClick(table)}
+                >
+                  <CardContent className="p-6 text-center">
+                    <div className="space-y-3">
+                      <h3 className="text-xl font-semibold">{table.name}</h3>
+                      {getStatusBadge(table.status)}
+                      {table.status === "occupied" && table.orders && (
+                        <p className="text-sm opacity-90">
+                          {table.orders.length} item{table.orders.length !== 1 ? "s" : ""}
+                        </p>
+                      )}
+                      {table.status === "reserved" && table.reservationDetails && (
+                        <div className="text-sm space-y-1">
+                          <p className="font-medium">{table.reservationDetails.name}</p>
+                          <p className="opacity-90">{table.reservationDetails.time}</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="pickup" className="space-y-6">
+            <div className="max-w-md mx-auto">
+              <Card className="text-center">
+                <CardContent className="p-8">
+                  <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-primary" />
+                  <h2 className="text-2xl font-bold mb-2">Pickup Order</h2>
+                  <p className="text-muted-foreground mb-6">Start a new pickup order and go straight to the menu.</p>
+                  <Button onClick={handlePickupOrder} size="lg" className="w-full">
+                    Start Pickup Order
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </>
+  )
+
+  const sidebarContent = selectedTable ? (
+    <>
+      {/* Table Header */}
+      <div className="p-6 border-b border-slate-200">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xl font-bold">{selectedTable.name}</h2>
+          {getStatusBadge(selectedTable.status)}
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {selectedTable.status === "occupied" && "Currently serving customers"}
+          {selectedTable.status === "reserved" && "Reserved for upcoming guests"}
+        </p>
+      </div>
+
+      {/* Content */}
+      <ScrollArea className="flex-1">
+        <div className="p-6">
+          {showPaymentOptions ? (
+            <div className="space-y-4">
+              <Button variant="ghost" onClick={() => setShowPaymentOptions(false)} className="w-full justify-start">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to table details
+              </Button>
+              <Separator />
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg">Payment Options</h3>
+                <Button variant="outline" className="w-full justify-start h-12 bg-transparent">
+                  <CreditCard className="mr-3 h-5 w-5" />
+                  Card Payment
+                </Button>
+                <Button variant="outline" className="w-full justify-start h-12 bg-transparent">
+                  <Banknote className="mr-3 h-5 w-5" />
+                  Cash Payment
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Orders */}
+              {selectedTable.status === "occupied" && selectedTable.orders && (
+                <div>
+                  <h3 className="font-semibold mb-4">Current Orders</h3>
+                  <div className="space-y-3">
+                    {selectedTable.orders.map((order) => (
+                      <Card key={order.id} className="border-slate-200">
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="font-medium">{order.item}</p>
+                              <p className="text-sm text-muted-foreground">Quantity: {order.quantity}</p>
+                            </div>
+                            <p className="font-bold text-primary">£{(order.price * order.quantity).toFixed(2)}</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Reservation Details */}
+              {selectedTable.status === "reserved" && selectedTable.reservationDetails && (
+                <div>
+                  <h3 className="font-semibold mb-4">Reservation Details</h3>
+                  <Card className="border-amber-200 bg-amber-50">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-amber-600" />
+                        <span className="font-medium">{selectedTable.reservationDetails.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-amber-600" />
+                        <span>{selectedTable.reservationDetails.time}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-amber-600" />
+                        <span>{selectedTable.reservationDetails.guests} guests</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+
+      {/* Footer */}
+      <div className="border-t border-slate-200 p-6">
+        {selectedTable.status === "occupied" && selectedTable.orders && (
+          <div className="mb-4 p-4 bg-slate-50 rounded-lg">
+            <div className="flex justify-between items-center">
+              <span className="font-semibold">Total</span>
+              <span className="text-xl font-bold text-primary">
+                £{selectedTable.orders.reduce((sum, order) => sum + order.price * order.quantity, 0).toFixed(2)}
+              </span>
+            </div>
+          </div>
+        )}
+        {!showPaymentOptions && (
+          <div className="space-y-3">
+            <Button onClick={() => handleOrderForTable(selectedTable.id)} className="w-full" size="lg">
+              {selectedTable.status === "occupied" ? "Add More Items" : "Start Order"}
+            </Button>
+            {(selectedTable.status === "occupied" || selectedTable.status === "reserved") && (
+              <Button onClick={() => setShowPaymentOptions(true)} variant="outline" className="w-full" size="lg">
+                Process Payment
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    </>
+  ) : (
+    <div className="p-6">
+      <div className="text-center text-muted-foreground">
+        <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+        <h3 className="font-medium mb-2">Select a Table</h3>
+        <p className="text-sm">Choose a table to view details and manage orders</p>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <ResizableLayout sidebar={sidebarContent}>{mainContent}</ResizableLayout>
+    </div>
+  )
+}

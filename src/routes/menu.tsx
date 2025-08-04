@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -11,47 +11,53 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
-import { Textarea } from "@/components/ui/textarea"
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { ArrowLeft, Check, Minus, Plus, Search, ShoppingCart, Trash2 } from "lucide-react"
-import { useEffect, useState } from "react"
-import { toast } from "sonner"
-import { ResizableLayout } from "../components/resizable-layout"
-
-
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import {
+  ArrowLeft,
+  Check,
+  Minus,
+  Plus,
+  Search,
+  ShoppingCart,
+  Trash2,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { ResizableLayout } from "../components/resizable-layout";
 
 interface MenuItem {
-  id: string
-  name: string
-  price: number
-  image: string
-  category: string
-  description: string
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  category: string;
+  description: string;
   options: {
-    id: string
-    name: string
-    type: "single" | "multiple"
-    required: boolean
+    id: string;
+    name: string;
+    type: "single" | "multiple";
+    required: boolean;
     choices: {
-      id: string
-      name: string
-      price: number
-    }[]
-  }[]
+      id: string;
+      name: string;
+      price: number;
+    }[];
+  }[];
 }
 
 interface CartItem {
-  id: string
-  menuItem: MenuItem
-  selectedOptions: { [optionId: string]: string[] }
-  quantity: number
-  totalPrice: number
+  id: string;
+  menuItem: MenuItem;
+  selectedOptions: { [optionId: string]: string[] };
+  quantity: number;
+  totalPrice: number;
 }
 
 const mockMenuItems: MenuItem[] = [
@@ -61,7 +67,8 @@ const mockMenuItems: MenuItem[] = [
     price: 12.99,
     image: "/placeholder.svg?height=200&width=200",
     category: "Burgers",
-    description: "Juicy beef patty with fresh lettuce, tomatoes, and our special sauce",
+    description:
+      "Juicy beef patty with fresh lettuce, tomatoes, and our special sauce",
     options: [
       {
         id: "size",
@@ -91,7 +98,8 @@ const mockMenuItems: MenuItem[] = [
     price: 14.99,
     image: "/placeholder.svg?height=200&width=200",
     category: "Pizza",
-    description: "Fresh mozzarella, basil, and tomato sauce on our signature dough",
+    description:
+      "Fresh mozzarella, basil, and tomato sauce on our signature dough",
     options: [
       {
         id: "size",
@@ -126,155 +134,191 @@ const mockMenuItems: MenuItem[] = [
       },
     ],
   },
-]
+];
 
-const categories = ["All", "Burgers", "Pizza", "Salads", "Drinks", "Desserts"]
-
+const categories = ["All", "Burgers", "Pizza", "Salads", "Drinks", "Desserts"];
 
 export const Route = createFileRoute("/menu")({
   component: Menu,
-})
+  beforeLoad: ({ context }: {
+    context: any;
+  }) => {
+    if (!context.auth.isAuthenticated) {
+      throw redirect({
+        to: "/",
+        search: {
+          redirect: "/tables",
+        },
+      });
+    }
+  },
+});
 
 export default function Menu() {
-  const navigate = useNavigate()
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("All")
-  const [cartItems, setCartItems] = useState<CartItem[]>([])
-  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null)
-  const [currentOptionIndex, setCurrentOptionIndex] = useState(0)
-  const [selectedOptions, setSelectedOptions] = useState<{ [optionId: string]: string[] }>({})
-  const [quantity, setQuantity] = useState(1)
-  const [notes, setNotes] = useState("")
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
-  const [selectedTable, setSelectedTable] = useState<string | null>(null)
-  const [orderType, setOrderType] = useState<"table" | "pickup">("table")
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+  const [currentOptionIndex, setCurrentOptionIndex] = useState(0);
+  const [selectedOptions, setSelectedOptions] = useState<
+    { [optionId: string]: string[] }
+  >({});
+  const [quantity, setQuantity] = useState(1);
+  const [notes, setNotes] = useState("");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [selectedTable, setSelectedTable] = useState<string | null>(null);
+  const [orderType, setOrderType] = useState<"table" | "pickup">("table");
 
   useEffect(() => {
-    const tableNumber = localStorage.getItem("selectedTable")
-    const storedOrderType = localStorage.getItem("orderType")
+    const tableNumber = localStorage.getItem("selectedTable");
+    const storedOrderType = localStorage.getItem("orderType");
     if (storedOrderType === "pickup") {
-      setOrderType("pickup")
-      setSelectedTable(null)
+      setOrderType("pickup");
+      setSelectedTable(null);
     } else if (tableNumber) {
-      setOrderType("table")
-      setSelectedTable(tableNumber)
+      setOrderType("table");
+      setSelectedTable(tableNumber);
     }
-  }, [])
+  }, []);
 
   const filteredItems = mockMenuItems.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCategory = selectedCategory === "All" || item.category === selectedCategory
-    return matchesSearch && matchesCategory
-  })
+    const matchesSearch = item.name.toLowerCase().includes(
+      searchQuery.toLowerCase(),
+    );
+    const matchesCategory = selectedCategory === "All" ||
+      item.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   const handleItemClick = (item: MenuItem) => {
-    setSelectedItem(item)
-    setCurrentOptionIndex(0)
-    setSelectedOptions({})
-    setQuantity(1)
-  }
+    setSelectedItem(item);
+    setCurrentOptionIndex(0);
+    setSelectedOptions({});
+    setQuantity(1);
+  };
 
-  const handleOptionChange = (optionId: string, choiceId: string, checked: boolean) => {
-    const option = selectedItem?.options.find((opt) => opt.id === optionId)
-    if (!option) return
+  const handleOptionChange = (
+    optionId: string,
+    choiceId: string,
+    checked: boolean,
+  ) => {
+    const option = selectedItem?.options.find((opt) => opt.id === optionId);
+    if (!option) return;
 
     setSelectedOptions((prev) => {
-      const current = prev[optionId] || []
+      const current = prev[optionId] || [];
       if (option.type === "single") {
-        return { ...prev, [optionId]: checked ? [choiceId] : [] }
+        return { ...prev, [optionId]: checked ? [choiceId] : [] };
       } else {
         if (checked) {
-          return { ...prev, [optionId]: [...current, choiceId] }
+          return { ...prev, [optionId]: [...current, choiceId] };
         } else {
-          return { ...prev, [optionId]: current.filter((id) => id !== choiceId) }
+          return {
+            ...prev,
+            [optionId]: current.filter((id) => id !== choiceId),
+          };
         }
       }
-    })
-  }
+    });
+  };
 
   const canProceed = () => {
-    if (!selectedItem) return false
-    const currentOption = selectedItem.options[currentOptionIndex]
-    if (!currentOption) return true
+    if (!selectedItem) return false;
+    const currentOption = selectedItem.options[currentOptionIndex];
+    if (!currentOption) return true;
     if (currentOption.required) {
-      const selected = selectedOptions[currentOption.id] || []
-      return selected.length > 0
+      const selected = selectedOptions[currentOption.id] || [];
+      return selected.length > 0;
     }
-    return true
-  }
+    return true;
+  };
 
-  const calculateItemPrice = (item: MenuItem, options: { [optionId: string]: string[] }) => {
-    let price = item.price
+  const calculateItemPrice = (
+    item: MenuItem,
+    options: { [optionId: string]: string[] },
+  ) => {
+    let price = item.price;
     item.options.forEach((option) => {
-      const selectedChoiceIds = options[option.id] || []
+      const selectedChoiceIds = options[option.id] || [];
       selectedChoiceIds.forEach((choiceId) => {
-        const choice = option.choices.find((c) => c.id === choiceId)
-        if (choice) price += choice.price
-      })
-    })
-    return price
-  }
+        const choice = option.choices.find((c) => c.id === choiceId);
+        if (choice) price += choice.price;
+      });
+    });
+    return price;
+  };
 
   const handleNext = () => {
-    if (!selectedItem) return
+    if (!selectedItem) return;
     if (currentOptionIndex < selectedItem.options.length - 1) {
-      setCurrentOptionIndex(currentOptionIndex + 1)
+      setCurrentOptionIndex(currentOptionIndex + 1);
     } else {
-      addToCart()
+      addToCart();
     }
-  }
+  };
 
   const addToCart = () => {
-    if (!selectedItem) return
-    const totalPrice = calculateItemPrice(selectedItem, selectedOptions) * quantity
+    if (!selectedItem) return;
+    const totalPrice = calculateItemPrice(selectedItem, selectedOptions) *
+      quantity;
     const cartItem: CartItem = {
       id: Date.now().toString(),
       menuItem: selectedItem,
       selectedOptions,
       quantity,
       totalPrice,
-    }
-    setCartItems((prev) => [...prev, cartItem])
-    setSelectedItem(null)
-    toast.success("Item added to cart!")
-  }
+    };
+    setCartItems((prev) => [...prev, cartItem]);
+    setSelectedItem(null);
+    toast.success("Item added to cart!");
+  };
 
   const removeFromCart = (cartItemId: string) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== cartItemId))
-  }
+    setCartItems((prev) => prev.filter((item) => item.id !== cartItemId));
+  };
 
   const updateCartItemQuantity = (cartItemId: string, newQuantity: number) => {
     if (newQuantity === 0) {
-      removeFromCart(cartItemId)
-      return
+      removeFromCart(cartItemId);
+      return;
     }
     setCartItems((prev) =>
       prev.map((item) =>
         item.id === cartItemId
-          ? { ...item, quantity: newQuantity, totalPrice: (item.totalPrice / item.quantity) * newQuantity }
-          : item,
-      ),
-    )
-  }
+          ? {
+            ...item,
+            quantity: newQuantity,
+            totalPrice: (item.totalPrice / item.quantity) * newQuantity,
+          }
+          : item
+      )
+    );
+  };
 
-  const totalAmount = cartItems.reduce((sum, item) => sum + item.totalPrice, 0)
+  const totalAmount = cartItems.reduce((sum, item) => sum + item.totalPrice, 0);
 
   const handleConfirmOrder = () => {
-    toast.success("Order confirmed! Sent to kitchen.")
-    setShowConfirmDialog(false)
-    setCartItems([])
-    setNotes("")
-  }
+    toast.success("Order confirmed! Sent to kitchen.");
+    setShowConfirmDialog(false);
+    setCartItems([]);
+    setNotes("");
+  };
 
-  const currentOption = selectedItem?.options[currentOptionIndex]
-  const isLastStep = selectedItem && currentOptionIndex === selectedItem.options.length - 1
+  const currentOption = selectedItem?.options[currentOptionIndex];
+  const isLastStep = selectedItem &&
+    currentOptionIndex === selectedItem.options.length - 1;
 
   const mainContent = (
     <>
       {/* Header */}
       <header className="bg-white border-b border-slate-200 px-6 py-4">
         <div className="flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate({ to: "/tables" })} className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            onClick={() => navigate({ to: "/tables" })}
+            className="flex items-center gap-2"
+          >
             <ArrowLeft className="h-4 w-4" />
             Back to Tables
           </Button>
@@ -291,7 +335,9 @@ export default function Menu() {
           </div>
           <div className="text-right">
             <p className="text-sm text-muted-foreground">
-              {orderType === "pickup" ? "Pickup Order" : `Table ${selectedTable}`}
+              {orderType === "pickup"
+                ? "Pickup Order"
+                : `Table ${selectedTable}`}
             </p>
           </div>
         </div>
@@ -326,12 +372,20 @@ export default function Menu() {
             >
               <CardContent className="p-0">
                 <div className="aspect-video relative overflow-hidden rounded-t-lg">
-                  <img src={item.image || "/placeholder.svg"} alt={item.name} className="w-full h-full object-cover" />
-                  <Badge className="absolute top-2 right-2 bg-white text-slate-900">£{item.price.toFixed(2)}</Badge>
+                  <img
+                    src={item.image || "/placeholder.svg"}
+                    alt={item.name}
+                    className="w-full h-full object-cover"
+                  />
+                  <Badge className="absolute top-2 right-2 bg-white text-slate-900">
+                    £{item.price.toFixed(2)}
+                  </Badge>
                 </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-lg mb-2">{item.name}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {item.description}
+                  </p>
                   <Badge variant="outline" className="mt-2">
                     {item.category}
                   </Badge>
@@ -342,7 +396,7 @@ export default function Menu() {
         </div>
       </ScrollArea>
     </>
-  )
+  );
 
   const sidebarContent = (
     <>
@@ -356,55 +410,70 @@ export default function Menu() {
       </div>
 
       <ScrollArea className="flex-1 p-6">
-        {cartItems.length === 0 ? (
-          <div className="text-center text-muted-foreground py-12">
-            <ShoppingCart className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>Your cart is empty</p>
-            <p className="text-sm mt-2">Add items to get started</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {cartItems.map((cartItem) => (
-              <Card key={cartItem.id} className="border-slate-200">
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-medium">{cartItem.menuItem.name}</h4>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeFromCart(cartItem.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-primary">£{cartItem.totalPrice.toFixed(2)}</span>
-                    <div className="flex items-center space-x-2">
+        {cartItems.length === 0
+          ? (
+            <div className="text-center text-muted-foreground py-12">
+              <ShoppingCart className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>Your cart is empty</p>
+              <p className="text-sm mt-2">Add items to get started</p>
+            </div>
+          )
+          : (
+            <div className="space-y-4">
+              {cartItems.map((cartItem) => (
+                <Card key={cartItem.id} className="border-slate-200">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-medium">{cartItem.menuItem.name}</h4>
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        onClick={() => updateCartItemQuantity(cartItem.id, cartItem.quantity - 1)}
-                        className="h-8 w-8 p-0"
+                        onClick={() =>
+                          removeFromCart(cartItem.id)}
+                        className="text-destructive hover:text-destructive"
                       >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <span className="w-8 text-center">{cartItem.quantity}</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateCartItemQuantity(cartItem.id, cartItem.quantity + 1)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Plus className="h-3 w-3" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-primary">
+                        £{cartItem.totalPrice.toFixed(2)}
+                      </span>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            updateCartItemQuantity(
+                              cartItem.id,
+                              cartItem.quantity - 1,
+                            )}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="w-8 text-center">
+                          {cartItem.quantity}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            updateCartItemQuantity(
+                              cartItem.id,
+                              cartItem.quantity + 1,
+                            )}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
       </ScrollArea>
 
       {cartItems.length > 0 && (
@@ -422,15 +491,21 @@ export default function Menu() {
           <Separator />
           <div className="flex justify-between items-center">
             <span className="text-lg font-semibold">Total</span>
-            <span className="text-xl font-bold text-primary">£{totalAmount.toFixed(2)}</span>
+            <span className="text-xl font-bold text-primary">
+              £{totalAmount.toFixed(2)}
+            </span>
           </div>
-          <Button onClick={() => setShowConfirmDialog(true)} className="w-full" size="lg">
+          <Button
+            onClick={() => setShowConfirmDialog(true)}
+            className="w-full"
+            size="lg"
+          >
             Confirm Order
           </Button>
         </div>
       )}
     </>
-  )
+  );
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -449,79 +524,125 @@ export default function Menu() {
                     className="w-24 h-24 rounded-lg object-cover"
                   />
                   <div>
-                    <DialogTitle className="text-xl">{selectedItem.name}</DialogTitle>
-                    <DialogDescription className="mt-2">{selectedItem.description}</DialogDescription>
-                    <Badge className="mt-2">£{selectedItem.price.toFixed(2)}</Badge>
+                    <DialogTitle className="text-xl">
+                      {selectedItem.name}
+                    </DialogTitle>
+                    <DialogDescription className="mt-2">
+                      {selectedItem.description}
+                    </DialogDescription>
+                    <Badge className="mt-2">
+                      £{selectedItem.price.toFixed(2)}
+                    </Badge>
                   </div>
                 </div>
               </DialogHeader>
 
               <div className="py-4">
-                {selectedItem.options.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Ready to add to cart!</p>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold">
-                        {currentOption?.name}
-                        {currentOption?.required && <span className="text-destructive ml-1">*</span>}
-                      </h3>
-                      <Badge variant="outline">
-                        {currentOptionIndex + 1} of {selectedItem.options.length}
-                      </Badge>
+                {selectedItem.options.length === 0
+                  ? (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">
+                        Ready to add to cart!
+                      </p>
                     </div>
+                  )
+                  : (
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold">
+                          {currentOption?.name}
+                          {currentOption?.required && (
+                            <span className="text-destructive ml-1">*</span>
+                          )}
+                        </h3>
+                        <Badge variant="outline">
+                          {currentOptionIndex + 1} of{" "}
+                          {selectedItem.options.length}
+                        </Badge>
+                      </div>
 
-                    <div className="space-y-3">
-                      {currentOption?.type === "single" ? (
-                        <RadioGroup
-                          value={selectedOptions[currentOption.id]?.[0] || ""}
-                          onValueChange={(value) => handleOptionChange(currentOption.id, value, true)}
-                        >
-                          {currentOption.choices.map((choice) => (
-                            <div key={choice.id} className="flex items-center space-x-3 p-3 rounded-lg border">
-                              <RadioGroupItem value={choice.id} id={choice.id} />
-                              <Label htmlFor={choice.id} className="flex-1 cursor-pointer">
-                                <div className="flex justify-between items-center">
-                                  <span>{choice.name}</span>
-                                  {choice.price > 0 && (
-                                    <span className="text-primary font-medium">+£{choice.price.toFixed(2)}</span>
-                                  )}
+                      <div className="space-y-3">
+                        {currentOption?.type === "single"
+                          ? (
+                            <RadioGroup
+                              value={selectedOptions[currentOption.id]?.[0] ||
+                                ""}
+                              onValueChange={(value) =>
+                                handleOptionChange(
+                                  currentOption.id,
+                                  value,
+                                  true,
+                                )}
+                            >
+                              {currentOption.choices.map((choice) => (
+                                <div
+                                  key={choice.id}
+                                  className="flex items-center space-x-3 p-3 rounded-lg border"
+                                >
+                                  <RadioGroupItem
+                                    value={choice.id}
+                                    id={choice.id}
+                                  />
+                                  <Label
+                                    htmlFor={choice.id}
+                                    className="flex-1 cursor-pointer"
+                                  >
+                                    <div className="flex justify-between items-center">
+                                      <span>{choice.name}</span>
+                                      {choice.price > 0 && (
+                                        <span className="text-primary font-medium">
+                                          +£{choice.price.toFixed(2)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </Label>
                                 </div>
-                              </Label>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      ) : (
-                        <div className="space-y-3">
-                          {currentOption?.choices.map((choice) => {
-                            const isSelected = selectedOptions[currentOption.id]?.includes(choice.id) || false
-                            return (
-                              <div key={choice.id} className="flex items-center space-x-3 p-3 rounded-lg border">
-                                <Checkbox
-                                  id={choice.id}
-                                  checked={isSelected}
-                                  onCheckedChange={(checked) =>
-                                    handleOptionChange(currentOption.id, choice.id, checked as boolean)
-                                  }
-                                />
-                                <Label htmlFor={choice.id} className="flex-1 cursor-pointer">
-                                  <div className="flex justify-between items-center">
-                                    <span>{choice.name}</span>
-                                    {choice.price > 0 && (
-                                      <span className="text-primary font-medium">+£{choice.price.toFixed(2)}</span>
-                                    )}
+                              ))}
+                            </RadioGroup>
+                          )
+                          : (
+                            <div className="space-y-3">
+                              {currentOption?.choices.map((choice) => {
+                                const isSelected =
+                                  selectedOptions[currentOption.id]?.includes(
+                                    choice.id,
+                                  ) || false;
+                                return (
+                                  <div
+                                    key={choice.id}
+                                    className="flex items-center space-x-3 p-3 rounded-lg border"
+                                  >
+                                    <Checkbox
+                                      id={choice.id}
+                                      checked={isSelected}
+                                      onCheckedChange={(checked) =>
+                                        handleOptionChange(
+                                          currentOption.id,
+                                          choice.id,
+                                          checked as boolean,
+                                        )}
+                                    />
+                                    <Label
+                                      htmlFor={choice.id}
+                                      className="flex-1 cursor-pointer"
+                                    >
+                                      <div className="flex justify-between items-center">
+                                        <span>{choice.name}</span>
+                                        {choice.price > 0 && (
+                                          <span className="text-primary font-medium">
+                                            +£{choice.price.toFixed(2)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </Label>
                                   </div>
-                                </Label>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
+                                );
+                              })}
+                            </div>
+                          )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {(isLastStep || selectedItem.options.length === 0) && (
                   <div className="mt-6 pt-6 border-t">
@@ -534,7 +655,9 @@ export default function Menu() {
                       >
                         <Minus className="h-4 w-4" />
                       </Button>
-                      <span className="text-xl font-bold min-w-[3rem] text-center">{quantity}</span>
+                      <span className="text-xl font-bold min-w-[3rem] text-center">
+                        {quantity}
+                      </span>
                       <Button
                         variant="outline"
                         size="sm"
@@ -549,10 +672,20 @@ export default function Menu() {
               </div>
 
               <DialogFooter>
-                <Button onClick={handleNext} disabled={!canProceed()} className="w-full" size="lg">
-                  <span>{isLastStep || selectedItem.options.length === 0 ? "Add to Cart" : "Next"}</span>
+                <Button
+                  onClick={handleNext}
+                  disabled={!canProceed()}
+                  className="w-full"
+                  size="lg"
+                >
+                  <span>
+                    {isLastStep || selectedItem.options.length === 0
+                      ? "Add to Cart"
+                      : "Next"}
+                  </span>
                   <span className="ml-2 font-bold">
-                    £{(calculateItemPrice(selectedItem, selectedOptions) * quantity).toFixed(2)}
+                    £{(calculateItemPrice(selectedItem, selectedOptions) *
+                      quantity).toFixed(2)}
                   </span>
                 </Button>
               </DialogFooter>
@@ -566,18 +699,29 @@ export default function Menu() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Confirm Order</DialogTitle>
-            <DialogDescription>{orderType === "pickup" ? "Pickup order" : `Table ${selectedTable}`}</DialogDescription>
+            <DialogDescription>
+              {orderType === "pickup"
+                ? "Pickup order"
+                : `Table ${selectedTable}`}
+            </DialogDescription>
           </DialogHeader>
 
           <ScrollArea className="max-h-96">
             <div className="space-y-4">
               {cartItems.map((cartItem) => (
-                <div key={cartItem.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                <div
+                  key={cartItem.id}
+                  className="flex justify-between items-center p-3 bg-slate-50 rounded-lg"
+                >
                   <div>
                     <p className="font-medium">{cartItem.menuItem.name}</p>
-                    <p className="text-sm text-muted-foreground">Qty: {cartItem.quantity}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Qty: {cartItem.quantity}
+                    </p>
                   </div>
-                  <p className="font-bold text-primary">£{cartItem.totalPrice.toFixed(2)}</p>
+                  <p className="font-bold text-primary">
+                    £{cartItem.totalPrice.toFixed(2)}
+                  </p>
                 </div>
               ))}
             </div>
@@ -592,11 +736,16 @@ export default function Menu() {
 
           <div className="flex justify-between items-center pt-4 border-t">
             <span className="text-lg font-semibold">Total</span>
-            <span className="text-xl font-bold text-primary">£{totalAmount.toFixed(2)}</span>
+            <span className="text-xl font-bold text-primary">
+              £{totalAmount.toFixed(2)}
+            </span>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmDialog(false)}
+            >
               Cancel
             </Button>
             <Button onClick={handleConfirmOrder}>
@@ -607,5 +756,5 @@ export default function Menu() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

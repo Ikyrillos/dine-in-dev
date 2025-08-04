@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 
 "use client"
 
@@ -10,21 +10,33 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-    Activity,
-    ArrowLeft,
-    BarChart3,
-    Calendar,
-    DollarSign,
-    PieChart,
-    ShoppingCart,
-    TrendingUp,
-    Users,
+  Activity,
+  ArrowLeft,
+  BarChart3,
+  Calendar,
+  DollarSign,
+  PieChart,
+  ShoppingCart,
+  TrendingUp,
+  Users,
 } from "lucide-react"
 import { useState } from "react"
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts"
 
 export const Route = createFileRoute('/control')({
   component: Control,
+  beforeLoad: ({ context }: {
+    context: any;
+  }) => {
+    if (!context.auth.isAuthenticated) {
+      throw redirect({
+        to: "/",
+        search: {
+          redirect: "/tables",
+        },
+      });
+    }
+  },
 })
 
 const chartData = [

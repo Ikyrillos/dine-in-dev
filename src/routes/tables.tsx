@@ -15,7 +15,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { useGetRestaurantById } from "@/core/hooks/use-restaurant-hooks"
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
 import { ArrowLeft, Banknote, BarChart3, Clock, CreditCard, Settings, ShoppingBag, Users } from "lucide-react"
 import { useState } from "react"
 
@@ -39,12 +40,28 @@ interface Table {
 
 export const Route = createFileRoute('/tables')({
   component: TableSelection,
+   beforeLoad: ({ context }: {
+    context: any;
+  }) => {
+    if (!context.auth.isAuthenticated) {
+      throw redirect({
+        to: "/",
+        search: {
+          redirect: "/tables",
+        },
+      });
+    }
+  },
 })
 
 export default function TableSelection() {
   const navigate = useNavigate()
   const [selectedTable, setSelectedTable] = useState<Table | null>(null)
   const [showPaymentOptions, setShowPaymentOptions] = useState(false)
+  const {
+    data: restaurant,
+    isLoading: isRestaurantLoading,
+  } = useGetRestaurantById()
 
   const tables: Table[] = [
     {
@@ -140,6 +157,14 @@ export default function TableSelection() {
     })
   }
 
+  if (isRestaurantLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-lg text-muted-foreground">Loading restaurant data...</p>
+      </div>
+    )
+  }
+
   const mainContent = (
     <>
       {/* Header */}
@@ -151,7 +176,9 @@ export default function TableSelection() {
                 <Button variant="ghost" className="relative h-12 w-12 rounded-full">
                   <Avatar className="h-12 w-12">
                     <AvatarImage src="/placeholder.svg" alt="Profile" />
-                    <AvatarFallback className="bg-primary text-primary-foreground">JD</AvatarFallback>
+                    <AvatarFallback className="bg-transparent text-primary-foreground">
+                      <img src={restaurant?.data.logo} alt="Logo" />
+                    </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
@@ -176,7 +203,7 @@ export default function TableSelection() {
               </DropdownMenuContent>
             </DropdownMenu>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Tawila</h1>
+              <h1 className="text-2xl font-bold text-slate-900">{restaurant?.data.name}</h1>
               <p className="text-sm text-slate-600">Restaurant Management</p>
             </div>
           </div>

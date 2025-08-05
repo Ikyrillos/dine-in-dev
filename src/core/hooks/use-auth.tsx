@@ -178,7 +178,7 @@ export const getAccessToken = (): string | null => {
 };
 
 // Utility function to check if user has specific role/permission
-export const useAuthGuard = (requiredRole?: string) => {
+export const useAuthGuard = () => {
   const { isAuthenticated, user } = useAuth();
   
   const hasAccess = isAuthenticated;

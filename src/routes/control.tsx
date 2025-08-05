@@ -62,6 +62,8 @@ export default function Control() {
   const [selectedPeriod, setSelectedPeriod] = useState("week")
   const [selectedRestaurant, setSelectedRestaurant] = useState("main")
 
+  console.log('Control component rendered with state:', { selectedPeriod, selectedRestaurant });
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}

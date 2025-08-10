@@ -78,7 +78,6 @@ export default function Menu() {
 
     // cart + notes
     cartItems,
-    removeFromCart,
     updateCartItemQuantity,
     totalAmount,
     notes,

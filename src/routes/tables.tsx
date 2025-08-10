@@ -121,6 +121,8 @@ const handleTableClick = (table: Table) => {
     });
   };
 
+  console.log(handleOrderForTable);
+
   const handlePickupOrder = () => {
     localStorage.setItem("orderType", "pickup");
     localStorage.removeItem("selectedTable");

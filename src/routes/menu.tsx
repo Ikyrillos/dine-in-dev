@@ -1,5 +1,6 @@
 "use client";
 
+import { Spinner } from "@/components/Spinner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +19,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { useGetMenuCategories } from "@/core/hooks/get-categories-hooks";
+import { useGetMenuItems } from "@/core/hooks/get-menu-items";
+import { useMenuStore } from "@/core/store/menu-store";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -28,127 +32,17 @@ import {
   ShoppingCart,
   Trash2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import { ResizableLayout } from "../components/resizable-layout";
 
-interface MenuItem {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-  category: string;
-  description: string;
-  options: {
-    id: string;
-    name: string;
-    type: "single" | "multiple";
-    required: boolean;
-    choices: {
-      id: string;
-      name: string;
-      price: number;
-    }[];
-  }[];
-}
-
-interface CartItem {
-  id: string;
-  menuItem: MenuItem;
-  selectedOptions: { [optionId: string]: string[] };
-  quantity: number;
-  totalPrice: number;
-}
-
-const mockMenuItems: MenuItem[] = [
-  {
-    id: "1",
-    name: "Classic Burger",
-    price: 12.99,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Burgers",
-    description:
-      "Juicy beef patty with fresh lettuce, tomatoes, and our special sauce",
-    options: [
-      {
-        id: "size",
-        name: "Size",
-        type: "single",
-        required: true,
-        choices: [
-          { id: "regular", name: "Regular", price: 0 },
-          { id: "large", name: "Large", price: 2.5 },
-        ],
-      },
-      {
-        id: "extras",
-        name: "Extras",
-        type: "multiple",
-        required: false,
-        choices: [
-          { id: "cheese", name: "Extra Cheese", price: 1.5 },
-          { id: "bacon", name: "Bacon", price: 2.0 },
-        ],
-      },
-    ],
-  },
-  {
-    id: "2",
-    name: "Margherita Pizza",
-    price: 14.99,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Pizza",
-    description:
-      "Fresh mozzarella, basil, and tomato sauce on our signature dough",
-    options: [
-      {
-        id: "size",
-        name: "Size",
-        type: "single",
-        required: true,
-        choices: [
-          { id: "small", name: 'Small (10")', price: 0 },
-          { id: "medium", name: 'Medium (12")', price: 3.0 },
-          { id: "large", name: 'Large (14")', price: 6.0 },
-        ],
-      },
-    ],
-  },
-  {
-    id: "3",
-    name: "Caesar Salad",
-    price: 9.99,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Salads",
-    description: "Crisp romaine lettuce with parmesan cheese and croutons",
-    options: [
-      {
-        id: "protein",
-        name: "Add Protein",
-        type: "single",
-        required: false,
-        choices: [
-          { id: "chicken", name: "Grilled Chicken", price: 4.0 },
-          { id: "salmon", name: "Grilled Salmon", price: 6.0 },
-        ],
-      },
-    ],
-  },
-];
-
-const categories = ["All", "Burgers", "Pizza", "Salads", "Drinks", "Desserts"];
-
 export const Route = createFileRoute("/menu")({
   component: Menu,
-  beforeLoad: ({ context }: {
-    context: any;
-  }) => {
+  beforeLoad: ({ context }: { context: any }) => {
     if (!context.auth.isAuthenticated) {
       throw redirect({
         to: "/",
-        search: {
-          redirect: "/tables",
-        },
+        search: { redirect: "/tables" },
       });
     }
   },
@@ -156,163 +50,80 @@ export const Route = createFileRoute("/menu")({
 
 export default function Menu() {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
-  const [currentOptionIndex, setCurrentOptionIndex] = useState(0);
-  const [selectedOptions, setSelectedOptions] = useState<
-    { [optionId: string]: string[] }
-  >({});
-  const [quantity, setQuantity] = useState(1);
-  const [notes, setNotes] = useState("");
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [selectedTable, setSelectedTable] = useState<string | null>(null);
-  const [orderType, setOrderType] = useState<"table" | "pickup">("table");
 
+  const { data: categories, isLoading: categoriesLoading } = useGetMenuCategories();
+  const { data: menuItems, isLoading: menuItemsLoading } = useGetMenuItems();
+
+  const {
+    // data + wiring
+    setData,
+    hydrateOrderContextFromStorage,
+
+    // ui state
+    searchQuery,
+    setSearchQuery,
+    selectedCategory,
+    setSelectedCategory,
+    selectedItem,
+    setSelectedItem,
+    currentOption,
+    filteredItems,
+    isLastStep,
+    canProceed,
+    calculateItemPrice,
+    nextOrAddToCart,
+    incQty,
+    decQty,
+    quantity,
+
+    // cart + notes
+    cartItems,
+    removeFromCart,
+    updateCartItemQuantity,
+    totalAmount,
+    notes,
+    setNotes,
+    showConfirmDialog,
+    setShowConfirmDialog,
+    clearCart,
+
+    // order context
+    orderType,
+    selectedTable,
+
+    // option changes
+    handleOptionChange,
+    startConfigForItem,
+  } = useMenuStore();
+
+  // push fetched data into store
   useEffect(() => {
-    const tableNumber = localStorage.getItem("selectedTable");
-    const storedOrderType = localStorage.getItem("orderType");
-    if (storedOrderType === "pickup") {
-      setOrderType("pickup");
-      setSelectedTable(null);
-    } else if (tableNumber) {
-      setOrderType("table");
-      setSelectedTable(tableNumber);
-    }
-  }, []);
-
-  const filteredItems = mockMenuItems.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(
-      searchQuery.toLowerCase(),
-    );
-    const matchesCategory = selectedCategory === "All" ||
-      item.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-
-  const handleItemClick = (item: MenuItem) => {
-    setSelectedItem(item);
-    setCurrentOptionIndex(0);
-    setSelectedOptions({});
-    setQuantity(1);
-  };
-
-  const handleOptionChange = (
-    optionId: string,
-    choiceId: string,
-    checked: boolean,
-  ) => {
-    const option = selectedItem?.options.find((opt) => opt.id === optionId);
-    if (!option) return;
-
-    setSelectedOptions((prev) => {
-      const current = prev[optionId] || [];
-      if (option.type === "single") {
-        return { ...prev, [optionId]: checked ? [choiceId] : [] };
-      } else {
-        if (checked) {
-          return { ...prev, [optionId]: [...current, choiceId] };
-        } else {
-          return {
-            ...prev,
-            [optionId]: current.filter((id) => id !== choiceId),
-          };
-        }
-      }
-    });
-  };
-
-  const canProceed = () => {
-    if (!selectedItem) return false;
-    const currentOption = selectedItem.options[currentOptionIndex];
-    if (!currentOption) return true;
-    if (currentOption.required) {
-      const selected = selectedOptions[currentOption.id] || [];
-      return selected.length > 0;
-    }
-    return true;
-  };
-
-  const calculateItemPrice = (
-    item: MenuItem,
-    options: { [optionId: string]: string[] },
-  ) => {
-    let price = item.price;
-    item.options.forEach((option) => {
-      const selectedChoiceIds = options[option.id] || [];
-      selectedChoiceIds.forEach((choiceId) => {
-        const choice = option.choices.find((c) => c.id === choiceId);
-        if (choice) price += choice.price;
+    if (categories?.data || menuItems?.data) {
+      setData({
+        categories: categories?.data ?? undefined,
+        menuItems: menuItems?.data ?? undefined,
       });
-    });
-    return price;
-  };
-
-  const handleNext = () => {
-    if (!selectedItem) return;
-    if (currentOptionIndex < selectedItem.options.length - 1) {
-      setCurrentOptionIndex(currentOptionIndex + 1);
-    } else {
-      addToCart();
     }
-  };
+  }, [categories?.data, menuItems?.data, setData]);
 
-  const addToCart = () => {
-    if (!selectedItem) return;
-    const totalPrice = calculateItemPrice(selectedItem, selectedOptions) *
-      quantity;
-    const cartItem: CartItem = {
-      id: Date.now().toString(),
-      menuItem: selectedItem,
-      selectedOptions,
-      quantity,
-      totalPrice,
-    };
-    setCartItems((prev) => [...prev, cartItem]);
-    setSelectedItem(null);
-    toast.success("Item added to cart!");
-  };
+  // hydrate order context once
+  useEffect(() => {
+    hydrateOrderContextFromStorage();
+  }, [hydrateOrderContextFromStorage]);
 
-  const removeFromCart = (cartItemId: string) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== cartItemId));
-  };
+  const items = filteredItems();
+  const total = totalAmount();
+  const curOption = currentOption();
+  const lastStep = isLastStep();
 
-  const updateCartItemQuantity = (cartItemId: string, newQuantity: number) => {
-    if (newQuantity === 0) {
-      removeFromCart(cartItemId);
-      return;
-    }
-    setCartItems((prev) =>
-      prev.map((item) =>
-        item.id === cartItemId
-          ? {
-            ...item,
-            quantity: newQuantity,
-            totalPrice: (item.totalPrice / item.quantity) * newQuantity,
-          }
-          : item
-      )
-    );
-  };
-
-  const totalAmount = cartItems.reduce((sum, item) => sum + item.totalPrice, 0);
-
-  const handleConfirmOrder = () => {
-    toast.success("Order confirmed! Sent to kitchen.");
-    setShowConfirmDialog(false);
-    setCartItems([]);
-    setNotes("");
-  };
-
-  const currentOption = selectedItem?.options[currentOptionIndex];
-  const isLastStep = selectedItem &&
-    currentOptionIndex === selectedItem.options.length - 1;
+  if (menuItemsLoading || categoriesLoading) {
+    return <Spinner />;
+  }
 
   const mainContent = (
-    <>
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4">
+      <header className="bg-white border-b border-slate-200 px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <Button
             variant="ghost"
@@ -322,6 +133,7 @@ export default function Menu() {
             <ArrowLeft className="h-4 w-4" />
             Back to Tables
           </Button>
+
           <div className="flex-1 max-w-md mx-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -333,28 +145,27 @@ export default function Menu() {
               />
             </div>
           </div>
+
           <div className="text-right">
             <p className="text-sm text-muted-foreground">
-              {orderType === "pickup"
-                ? "Pickup Order"
-                : `Table ${selectedTable}`}
+              {orderType === "pickup" ? "Pickup Order" : `Table ${selectedTable}`}
             </p>
           </div>
         </div>
       </header>
 
       {/* Categories */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4">
+      <div className="bg-white border-b border-slate-200 px-6 py-4 flex-shrink-0">
         <ScrollArea className="w-full whitespace-nowrap">
-          <div className="flex space-x-2">
-            {categories.map((category) => (
+          <div className="flex flex-wrap gap-2">
+            {categories?.data.map((category) => (
               <Button
-                key={category}
-                variant={selectedCategory === category ? "default" : "outline"}
-                onClick={() => setSelectedCategory(category)}
+                key={category.id}
+                variant={String(selectedCategory) === String(category.id) ? "default" : "outline"}
+                onClick={() => setSelectedCategory(String(category.id))}
                 className="whitespace-nowrap"
               >
-                {category}
+                {category.name}
               </Button>
             ))}
           </div>
@@ -362,40 +173,40 @@ export default function Menu() {
       </div>
 
       {/* Menu Items */}
-      <ScrollArea className="flex-1 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredItems.map((item) => (
-            <Card
-              key={item.id}
-              className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
-              onClick={() => handleItemClick(item)}
-            >
-              <CardContent className="p-0">
-                <div className="aspect-video relative overflow-hidden rounded-t-lg">
-                  <img
-                    src={item.image || "/placeholder.svg"}
-                    alt={item.name}
-                    className="w-full h-full object-cover"
-                  />
-                  <Badge className="absolute top-2 right-2 bg-white text-slate-900">
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full overflow-y-auto p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {items.map((item) => (
+              <div
+                key={item._id}
+                className="flex items-center justify-between p-4 mb-2 border border-gray-200 rounded-lg cursor-pointer hover:shadow-md hover:bg-gray-50 transition-all"
+                onClick={() => startConfigForItem(item)}
+                role="button"
+              >
+                <div className="flex items-center min-w-0">
+                  <div className="relative flex-shrink-0 w-20 h-20 overflow-hidden rounded-md ring-1 ring-gray-200">
+                    <img
+                      src={item.photoUrl || "/placeholder.svg"}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <h3 className="ml-4 font-semibold text-base md:text-lg">
+                    {item.name}
+                  </h3>
+                </div>
+
+                <div className="flex-shrink-0">
+                  <span className="inline-block px-3 py-4 border rounded-md bg-white text-sm md:text-base">
                     £{item.price.toFixed(2)}
-                  </Badge>
+                  </span>
                 </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-lg mb-2">{item.name}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {item.description}
-                  </p>
-                  <Badge variant="outline" className="mt-2">
-                    {item.category}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+              </div>
+            ))}
+          </div>
         </div>
-      </ScrollArea>
-    </>
+      </div>
+    </div>
   );
 
   const sidebarContent = (
@@ -410,70 +221,61 @@ export default function Menu() {
       </div>
 
       <ScrollArea className="flex-1 p-6">
-        {cartItems.length === 0
-          ? (
-            <div className="text-center text-muted-foreground py-12">
-              <ShoppingCart className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>Your cart is empty</p>
-              <p className="text-sm mt-2">Add items to get started</p>
-            </div>
-          )
-          : (
-            <div className="space-y-4">
-              {cartItems.map((cartItem) => (
-                <Card key={cartItem.id} className="border-slate-200">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-medium">{cartItem.menuItem.name}</h4>
+        {cartItems.length === 0 ? (
+          <div className="text-center text-muted-foreground py-12">
+            <ShoppingCart className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <p>Your cart is empty</p>
+            <p className="text-sm mt-2">Add items to get started</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {cartItems.map((cartItem) => (
+              <Card key={cartItem.id} className="border-slate-200">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-medium">{cartItem.menuItem.name}</h4>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => useMenuStore.getState().removeFromCart(cartItem.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-primary">
+                      £{cartItem.totalPrice.toFixed(2)}
+                    </span>
+                    <div className="flex items-center space-x-2">
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
                         onClick={() =>
-                          removeFromCart(cartItem.id)}
-                        className="text-destructive hover:text-destructive"
+                          updateCartItemQuantity(cartItem.id, cartItem.quantity - 1)
+                        }
+                        className="h-8 w-8 p-0"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="w-8 text-center">{cartItem.quantity}</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          updateCartItemQuantity(cartItem.id, cartItem.quantity + 1)
+                        }
+                        className="h-8 w-8 p-0"
+                      >
+                        <Plus className="h-3 w-3" />
                       </Button>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-primary">
-                        £{cartItem.totalPrice.toFixed(2)}
-                      </span>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            updateCartItemQuantity(
-                              cartItem.id,
-                              cartItem.quantity - 1,
-                            )}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-8 text-center">
-                          {cartItem.quantity}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            updateCartItemQuantity(
-                              cartItem.id,
-                              cartItem.quantity + 1,
-                            )}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </ScrollArea>
 
       {cartItems.length > 0 && (
@@ -491,15 +293,9 @@ export default function Menu() {
           <Separator />
           <div className="flex justify-between items-center">
             <span className="text-lg font-semibold">Total</span>
-            <span className="text-xl font-bold text-primary">
-              £{totalAmount.toFixed(2)}
-            </span>
+            <span className="text-xl font-bold text-primary">£{total.toFixed(2)}</span>
           </div>
-          <Button
-            onClick={() => setShowConfirmDialog(true)}
-            className="w-full"
-            size="lg"
-          >
+          <Button onClick={() => setShowConfirmDialog(true)} className="w-full" size="lg">
             Confirm Order
           </Button>
         </div>
@@ -508,7 +304,7 @@ export default function Menu() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 h-screen overflow-hidden">
       <ResizableLayout sidebar={sidebarContent}>{mainContent}</ResizableLayout>
 
       {/* Item Modal */}
@@ -519,151 +315,105 @@ export default function Menu() {
               <DialogHeader>
                 <div className="flex items-start gap-4">
                   <img
-                    src={selectedItem.image || "/placeholder.svg"}
+                    src={selectedItem.photoUrl || "/placeholder.svg"}
                     alt={selectedItem.name}
                     className="w-24 h-24 rounded-lg object-cover"
                   />
                   <div>
-                    <DialogTitle className="text-xl">
-                      {selectedItem.name}
-                    </DialogTitle>
+                    <DialogTitle className="text-xl">{selectedItem.name}</DialogTitle>
                     <DialogDescription className="mt-2">
                       {selectedItem.description}
                     </DialogDescription>
-                    <Badge className="mt-2">
-                      £{selectedItem.price.toFixed(2)}
-                    </Badge>
+                    <Badge className="mt-2">£{selectedItem.price.toFixed(2)}</Badge>
                   </div>
                 </div>
               </DialogHeader>
 
               <div className="py-4">
-                {selectedItem.options.length === 0
-                  ? (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground">
-                        Ready to add to cart!
-                      </p>
+                {selectedItem.options.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Ready to add to cart!</p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold">
+                        {curOption?.name}
+                        {curOption?.required && <span className="text-destructive ml-1">*</span>}
+                      </h3>
+                      <Badge variant="outline">
+                        {useMenuStore.getState().currentOptionIndex + 1} of{" "}
+                        {selectedItem.options.length}
+                      </Badge>
                     </div>
-                  )
-                  : (
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold">
-                          {currentOption?.name}
-                          {currentOption?.required && (
-                            <span className="text-destructive ml-1">*</span>
-                          )}
-                        </h3>
-                        <Badge variant="outline">
-                          {currentOptionIndex + 1} of{" "}
-                          {selectedItem.options.length}
-                        </Badge>
-                      </div>
 
-                      <div className="space-y-3">
-                        {currentOption?.type === "single"
-                          ? (
-                            <RadioGroup
-                              value={selectedOptions[currentOption.id]?.[0] ||
-                                ""}
-                              onValueChange={(value) =>
-                                handleOptionChange(
-                                  currentOption.id,
-                                  value,
-                                  true,
-                                )}
-                            >
-                              {currentOption.choices.map((choice) => (
-                                <div
-                                  key={choice.id}
-                                  className="flex items-center space-x-3 p-3 rounded-lg border"
-                                >
-                                  <RadioGroupItem
-                                    value={choice.id}
-                                    id={choice.id}
-                                  />
-                                  <Label
-                                    htmlFor={choice.id}
-                                    className="flex-1 cursor-pointer"
-                                  >
-                                    <div className="flex justify-between items-center">
-                                      <span>{choice.name}</span>
-                                      {choice.price > 0 && (
-                                        <span className="text-primary font-medium">
-                                          +£{choice.price.toFixed(2)}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </Label>
+                    <div className="space-y-3">
+                      {curOption?.type === "radio" ? (
+                        <RadioGroup
+                          value={
+                            useMenuStore.getState().selectedOptions[curOption._id]?.[0] || ""
+                          }
+                          onValueChange={(value) => handleOptionChange(curOption._id, value, true)}
+                        >
+                          {curOption.choices?.map((choice) => (
+                            <div key={choice._id} className="flex items-center space-x-3 p-3 rounded-lg border">
+                              <RadioGroupItem value={choice._id} id={choice._id} />
+                              <Label htmlFor={choice._id} className="flex-1 cursor-pointer">
+                                <div className="flex justify-between items-center">
+                                  <span>{choice.name}</span>
+                                  {choice.price > 0 && (
+                                    <span className="text-primary font-medium">
+                                      +£{choice.price.toFixed(2)}
+                                    </span>
+                                  )}
                                 </div>
-                              ))}
-                            </RadioGroup>
-                          )
-                          : (
-                            <div className="space-y-3">
-                              {currentOption?.choices.map((choice) => {
-                                const isSelected =
-                                  selectedOptions[currentOption.id]?.includes(
-                                    choice.id,
-                                  ) || false;
-                                return (
-                                  <div
-                                    key={choice.id}
-                                    className="flex items-center space-x-3 p-3 rounded-lg border"
-                                  >
-                                    <Checkbox
-                                      id={choice.id}
-                                      checked={isSelected}
-                                      onCheckedChange={(checked) =>
-                                        handleOptionChange(
-                                          currentOption.id,
-                                          choice.id,
-                                          checked as boolean,
-                                        )}
-                                    />
-                                    <Label
-                                      htmlFor={choice.id}
-                                      className="flex-1 cursor-pointer"
-                                    >
-                                      <div className="flex justify-between items-center">
-                                        <span>{choice.name}</span>
-                                        {choice.price > 0 && (
-                                          <span className="text-primary font-medium">
-                                            +£{choice.price.toFixed(2)}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </Label>
-                                  </div>
-                                );
-                              })}
+                              </Label>
                             </div>
-                          )}
-                      </div>
+                          ))}
+                        </RadioGroup>
+                      ) : (
+                        <div className="space-y-3">
+                          {curOption?.choices?.map((choice) => {
+                            const isSelected =
+                              useMenuStore
+                                .getState()
+                                .selectedOptions[curOption._id]?.includes(choice._id) || false;
+                            return (
+                              <div key={choice._id} className="flex items-center space-x-3 p-3 rounded-lg border">
+                                <Checkbox
+                                  id={choice._id}
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) =>
+                                    handleOptionChange(curOption._id, choice._id, !!checked)
+                                  }
+                                />
+                                <Label htmlFor={choice._id} className="flex-1 cursor-pointer">
+                                  <div className="flex justify-between items-center">
+                                    <span>{choice.name}</span>
+                                    {choice.price > 0 && (
+                                      <span className="text-primary font-medium">
+                                        +£{choice.price.toFixed(2)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </Label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+                )}
 
-                {(isLastStep || selectedItem.options.length === 0) && (
+                {(lastStep || selectedItem.options.length === 0) && (
                   <div className="mt-6 pt-6 border-t">
                     <div className="flex items-center justify-center space-x-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        className="h-10 w-10 p-0"
-                      >
+                      <Button variant="outline" size="sm" onClick={decQty} className="h-10 w-10 p-0">
                         <Minus className="h-4 w-4" />
                       </Button>
-                      <span className="text-xl font-bold min-w-[3rem] text-center">
-                        {quantity}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setQuantity(quantity + 1)}
-                        className="h-10 w-10 p-0"
-                      >
+                      <span className="text-xl font-bold min-w-[3rem] text-center">{quantity}</span>
+                      <Button variant="outline" size="sm" onClick={incQty} className="h-10 w-10 p-0">
                         <Plus className="h-4 w-4" />
                       </Button>
                     </div>
@@ -673,19 +423,24 @@ export default function Menu() {
 
               <DialogFooter>
                 <Button
-                  onClick={handleNext}
+                  onClick={() => {
+                    nextOrAddToCart();
+                    if (lastStep || selectedItem.options.length === 0) {
+                      toast.success("Item added to cart!");
+                    }
+                  }}
                   disabled={!canProceed()}
                   className="w-full"
                   size="lg"
                 >
-                  <span>
-                    {isLastStep || selectedItem.options.length === 0
-                      ? "Add to Cart"
-                      : "Next"}
-                  </span>
+                  <span>{lastStep || selectedItem.options.length === 0 ? "Add to Cart" : "Next"}</span>
                   <span className="ml-2 font-bold">
-                    £{(calculateItemPrice(selectedItem, selectedOptions) *
-                      quantity).toFixed(2)}
+                    £{(
+                      calculateItemPrice(
+                        selectedItem,
+                        useMenuStore.getState().selectedOptions
+                      ) * quantity
+                    ).toFixed(2)}
                   </span>
                 </Button>
               </DialogFooter>
@@ -700,9 +455,7 @@ export default function Menu() {
           <DialogHeader>
             <DialogTitle>Confirm Order</DialogTitle>
             <DialogDescription>
-              {orderType === "pickup"
-                ? "Pickup order"
-                : `Table ${selectedTable}`}
+              {orderType === "pickup" ? "Pickup order" : `Table ${selectedTable}`}
             </DialogDescription>
           </DialogHeader>
 
@@ -715,13 +468,9 @@ export default function Menu() {
                 >
                   <div>
                     <p className="font-medium">{cartItem.menuItem.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Qty: {cartItem.quantity}
-                    </p>
+                    <p className="text-sm text-muted-foreground">Qty: {cartItem.quantity}</p>
                   </div>
-                  <p className="font-bold text-primary">
-                    £{cartItem.totalPrice.toFixed(2)}
-                  </p>
+                  <p className="font-bold text-primary">£{cartItem.totalPrice.toFixed(2)}</p>
                 </div>
               ))}
             </div>
@@ -736,19 +485,20 @@ export default function Menu() {
 
           <div className="flex justify-between items-center pt-4 border-t">
             <span className="text-lg font-semibold">Total</span>
-            <span className="text-xl font-bold text-primary">
-              £{totalAmount.toFixed(2)}
-            </span>
+            <span className="text-xl font-bold text-primary">£{total.toFixed(2)}</span>
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowConfirmDialog(false)}
-            >
+            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleConfirmOrder}>
+            <Button
+              onClick={() => {
+                toast.success("Order confirmed! Sent to kitchen.");
+                setShowConfirmDialog(false);
+                clearCart();
+              }}
+            >
               <Check className="w-4 h-4 mr-2" />
               Confirm Order
             </Button>

@@ -1,7 +1,7 @@
 
 import { BASE_URL } from '../apis-endpoints';
 import { makeRequest } from '../make-request';
-import type { LoginDto, LoginResponse, LogoutResponse, RegisterDto, RegisterResponse, User } from './dtos/dtos';
+import type { LoginDto, LoginResponse, LogoutResponse, RegisterDto, RegisterResponse, User } from '../models/dtos/dtos';
 
 class AuthService {
     /**

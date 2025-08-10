@@ -13,6 +13,7 @@ export const useGetRestaurantById = () => {
     {
       queryKey: queryKeys.restaurant(RESTAURANT_ID),
       queryFn: () => restaurantApi.findOne(RESTAURANT_ID),
+
       refetchOnWindowFocus: false, // Optional: Prevent refetching on window focus
     }
    

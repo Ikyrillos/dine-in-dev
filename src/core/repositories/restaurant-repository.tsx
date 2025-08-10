@@ -1,6 +1,6 @@
 import { BASE_URL } from "../apis-endpoints";
 import { makeRequest } from "../make-request";
-import type { CreateRestaurantDto, UpdateRestaurantDto } from "./dtos/restaurant-dto";
+import type { CreateRestaurantDto, UpdateRestaurantDto } from "../models/dtos/restaurant-dto";
 
 
 export interface WorkingHours {
@@ -26,7 +26,7 @@ export interface CustomLink {
   value: string
 }
 export interface Restaurant {
-    _id: string;
+    id: string;
     name: string;
     slug: string;
     phoneNumber: string;

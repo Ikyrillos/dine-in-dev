@@ -1,7 +1,7 @@
 // auth.tsx
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import type { User } from '../models/dtos/dtos';
 import { authApi } from '../repositories/auth-repository';
-import type { User } from '../repositories/dtos/dtos';
 
 export interface LoginResponse {
   accessToken: string;

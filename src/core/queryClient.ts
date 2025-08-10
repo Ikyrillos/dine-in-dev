@@ -1,6 +1,7 @@
 // src/queryClient.ts
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
-import axios, { type AxiosError } from "axios";
+import type { AxiosError } from "axios";
+import axios from "axios";
 
 interface ValidationError {
 	type: string;

@@ -33,7 +33,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect } from "react";
-import { toast } from "sonner";
 import { ResizableLayout } from "../components/resizable-layout";
 
 export const Route = createFileRoute("/menu")({
@@ -425,7 +424,7 @@ export default function Menu() {
                   onClick={() => {
                     nextOrAddToCart();
                     if (lastStep || selectedItem.options.length === 0) {
-                      toast.success("Item added to cart!");
+                      // toast.success("Item added to cart!");
                     }
                   }}
                   disabled={!canProceed()}
@@ -493,7 +492,7 @@ export default function Menu() {
             </Button>
             <Button
               onClick={() => {
-                toast.success("Order confirmed! Sent to kitchen.");
+                // toast.success("Order confirmed! Sent to kitchen.");
                 setShowConfirmDialog(false);
                 clearCart();
               }}

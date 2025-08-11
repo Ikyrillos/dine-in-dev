@@ -146,7 +146,7 @@ export default function Menu() {
 
           <div className="text-right">
             <p className="text-sm text-muted-foreground">
-              {orderType === "pickup" ? "Pickup Order" : `Table ${selectedTable}`}
+              {orderType === "pickup" ? "Pickup Order" : ``}
             </p>
           </div>
         </div>
@@ -177,25 +177,25 @@ export default function Menu() {
             {items.map((item) => (
               <div
                 key={item._id}
-                className="flex items-center justify-between p-4 mb-2 border border-gray-200 rounded-lg cursor-pointer hover:shadow-md hover:bg-gray-50 transition-all"
+                className="flex items-center justify-between p-2 mb-2 border border-gray-200 rounded-lg cursor-pointer hover:shadow-md hover:bg-gray-50 transition-all"
                 onClick={() => startConfigForItem(item)}
                 role="button"
               >
                 <div className="flex items-center min-w-0">
                   <div className="relative flex-shrink-0 w-20 h-20 overflow-hidden rounded-md ring-1 ring-gray-200">
                     <img
-                      src={item.photoUrl || "/placeholder.svg"}
+                      src={item.photoUrl || "/placeholder.png"}
                       alt={item.name}
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <h3 className="ml-4 font-semibold text-base md:text-lg">
+                  <h3 className="ml-4 font-semibold text-base md:text-md mx-2">
                     {item.name}
                   </h3>
                 </div>
 
                 <div className="flex-shrink-0">
-                  <span className="inline-block px-3 py-4 border rounded-md bg-white text-sm md:text-base">
+                  <span className="inline-block px-2 py-2 border rounded-md bg-white text-sm md:text-base text-black">
                     £{item.price.toFixed(2)}
                   </span>
                 </div>
@@ -208,8 +208,9 @@ export default function Menu() {
   );
 
   const sidebarContent = (
-    <>
-      <div className="p-6 border-b border-slate-200">
+    <div className="flex flex-col h-full">
+      {/* Header - Fixed */}
+      <div className="p-6 border-b border-slate-200 flex-shrink-0">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">Your Order</h2>
           <Badge variant="secondary">
@@ -218,66 +219,70 @@ export default function Menu() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1 p-6">
-        {cartItems.length === 0 ? (
-          <div className="text-center text-muted-foreground py-12">
-            <ShoppingCart className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>Your cart is empty</p>
-            <p className="text-sm mt-2">Add items to get started</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {cartItems.map((cartItem) => (
-              <Card key={cartItem.id} className="border-slate-200">
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-medium">{cartItem.menuItem.name}</h4>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => useMenuStore.getState().removeFromCart(cartItem.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-primary">
-                      £{cartItem.totalPrice.toFixed(2)}
-                    </span>
-                    <div className="flex items-center space-x-2">
+      {/* Scrollable Cart Items Section */}
+      <div className="flex-1 overflow-hidden">
+        <ScrollArea className="h-full p-6">
+          {cartItems.length === 0 ? (
+            <div className="text-center text-muted-foreground py-12">
+              <ShoppingCart className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>Your cart is empty</p>
+              <p className="text-sm mt-2">Add items to get started</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {cartItems.map((cartItem) => (
+                <Card key={cartItem.id} className="border-slate-200">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-medium">{cartItem.menuItem.name}</h4>
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        onClick={() =>
-                          updateCartItemQuantity(cartItem.id, cartItem.quantity - 1)
-                        }
-                        className="h-8 w-8 p-0"
+                        onClick={() => useMenuStore.getState().removeFromCart(cartItem.id)}
+                        className="text-destructive hover:text-destructive"
                       >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <span className="w-8 text-center">{cartItem.quantity}</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          updateCartItemQuantity(cartItem.id, cartItem.quantity + 1)
-                        }
-                        className="h-8 w-8 p-0"
-                      >
-                        <Plus className="h-3 w-3" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </ScrollArea>
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-primary">
+                        £{cartItem.totalPrice.toFixed(2)}
+                      </span>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            updateCartItemQuantity(cartItem.id, cartItem.quantity - 1)
+                          }
+                          className="h-8 w-8 p-0"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="w-8 text-center">{cartItem.quantity}</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            updateCartItemQuantity(cartItem.id, cartItem.quantity + 1)
+                          }
+                          className="h-8 w-8 p-0"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </div>
 
+      {/* Fixed Bottom Section - Order Summary */}
       {cartItems.length > 0 && (
-        <div className="border-t border-slate-200 p-6 space-y-4">
+        <div className="border-t border-slate-200 p-6 space-y-4 flex-shrink-0 bg-white">
           <div>
             <Label className="text-sm font-medium">Special Instructions</Label>
             <Textarea
@@ -298,7 +303,7 @@ export default function Menu() {
           </Button>
         </div>
       )}
-    </>
+    </div>
   );
 
   return (
@@ -313,7 +318,7 @@ export default function Menu() {
               <DialogHeader>
                 <div className="flex items-start gap-4">
                   <img
-                    src={selectedItem.photoUrl || "/placeholder.svg"}
+                    src={selectedItem.photoUrl || "/placeholder.png"}
                     alt={selectedItem.name}
                     className="w-24 h-24 rounded-lg object-cover"
                   />

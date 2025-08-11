@@ -52,6 +52,7 @@ export default function TableSelection() {
   const {
     data: tables,
     isLoading: isTablesLoading,
+    refetch: refetchTables,
   } = useGetTables();
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
@@ -65,6 +66,7 @@ export default function TableSelection() {
       localStorage.setItem("x-foundation-id", restaurant.data.id);
       console.log("x-foundation-id", localStorage.getItem("x-foundation-id"));
       console.log("x-foundation-id before", restaurant.data.id);
+      refetchTables();
     }
   }, [restaurant?.data]);
 
@@ -154,9 +156,9 @@ const handleTableClick = (table: Table) => {
                   className="relative h-12 w-12 rounded-full"
                 >
                   <Avatar className="h-12 w-12">
-                    <AvatarImage src="/placeholder.svg" alt="Profile" />
+                    <AvatarImage src={restaurant?.data.logo} alt="Profile" />
                     <AvatarFallback className="bg-transparent text-primary-foreground">
-                      <img src={restaurant?.data.logo} alt="Logo" />
+                      <img src={"/placeholder.svg" } alt="Logo" />
                     </AvatarFallback>
                   </Avatar>
                 </Button>

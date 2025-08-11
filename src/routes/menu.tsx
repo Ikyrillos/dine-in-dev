@@ -350,46 +350,19 @@ export default function Menu() {
                       </Badge>
                     </div>
 
-                    <div className="space-y-3">
-                      {curOption?.type === "radio" ? (
-                        <RadioGroup
-                          value={
-                            useMenuStore.getState().selectedOptions[curOption._id]?.[0] || ""
-                          }
-                          onValueChange={(value) => handleOptionChange(curOption._id, value, true)}
-                        >
-                          {curOption.choices?.map((choice) => (
-                            <div key={choice._id} className="flex items-center space-x-3 p-3 rounded-lg border">
-                              <RadioGroupItem value={choice._id} id={choice._id} />
-                              <Label htmlFor={choice._id} className="flex-1 cursor-pointer">
-                                <div className="flex justify-between items-center">
-                                  <span>{choice.name}</span>
-                                  {choice.price > 0 && (
-                                    <span className="text-primary font-medium">
-                                      +£{choice.price.toFixed(2)}
-                                    </span>
-                                  )}
-                                </div>
-                              </Label>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      ) : (
-                        <div className="space-y-3">
-                          {curOption?.choices?.map((choice) => {
-                            const isSelected =
-                              useMenuStore
-                                .getState()
-                                .selectedOptions[curOption._id]?.includes(choice._id) || false;
-                            return (
+                    {/* Scrollable options section with limited height */}
+                    <ScrollArea className="h-64 pr-4">
+                      <div className="space-y-3">
+                        {curOption?.type === "radio" ? (
+                          <RadioGroup
+                            value={
+                              useMenuStore.getState().selectedOptions[curOption._id]?.[0] || ""
+                            }
+                            onValueChange={(value) => handleOptionChange(curOption._id, value, true)}
+                          >
+                            {curOption.choices?.map((choice) => (
                               <div key={choice._id} className="flex items-center space-x-3 p-3 rounded-lg border">
-                                <Checkbox
-                                  id={choice._id}
-                                  checked={isSelected}
-                                  onCheckedChange={(checked) =>
-                                    handleOptionChange(curOption._id, choice._id, !!checked)
-                                  }
-                                />
+                                <RadioGroupItem value={choice._id} id={choice._id} />
                                 <Label htmlFor={choice._id} className="flex-1 cursor-pointer">
                                   <div className="flex justify-between items-center">
                                     <span>{choice.name}</span>
@@ -401,11 +374,41 @@ export default function Menu() {
                                   </div>
                                 </Label>
                               </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
+                            ))}
+                          </RadioGroup>
+                        ) : (
+                          <div className="space-y-3">
+                            {curOption?.choices?.map((choice) => {
+                              const isSelected =
+                                useMenuStore
+                                  .getState()
+                                  .selectedOptions[curOption._id]?.includes(choice._id) || false;
+                              return (
+                                <div key={choice._id} className="flex items-center space-x-3 p-3 rounded-lg border">
+                                  <Checkbox
+                                    id={choice._id}
+                                    checked={isSelected}
+                                    onCheckedChange={(checked) =>
+                                      handleOptionChange(curOption._id, choice._id, !!checked)
+                                    }
+                                  />
+                                  <Label htmlFor={choice._id} className="flex-1 cursor-pointer">
+                                    <div className="flex justify-between items-center w-full">
+                                      <span>{choice.name}</span>
+                                      {choice.price > 0 && (
+                                        <span className="text-primary font-medium">
+                                          +£{choice.price.toFixed(2)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </Label>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
                   </div>
                 )}
 

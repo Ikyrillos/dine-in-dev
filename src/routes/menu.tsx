@@ -1,5 +1,6 @@
 "use client";
 
+import CategoryChooserDialog from "@/components/CategoriesDialog";
 import { Spinner } from "@/components/Spinner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,7 +51,8 @@ export const Route = createFileRoute("/menu")({
 export default function Menu() {
   const navigate = useNavigate();
 
-  const { data: categories, isLoading: categoriesLoading } = useGetMenuCategories();
+  const { data: categories, isLoading: categoriesLoading } =
+    useGetMenuCategories();
   const { data: menuItems, isLoading: menuItemsLoading } = useGetMenuItems();
 
   const {
@@ -155,11 +157,21 @@ export default function Menu() {
       {/* Categories */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex-shrink-0">
         <ScrollArea className="w-full whitespace-nowrap">
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-5 gap-2">
+            <CategoryChooserDialog
+              categories={categories}
+              selectedCategory={selectedCategory}
+              onSelect={(value) => setSelectedCategory(value)}
+              triggerLabel={selectedCategory
+                ? "Change Category"
+                : "Choose Category"}
+            />
             {categories?.data.map((category) => (
               <Button
                 key={category.id}
-                variant={String(selectedCategory) === String(category.id) ? "default" : "outline"}
+                variant={String(selectedCategory) === String(category.id)
+                  ? "default"
+                  : "outline"}
                 onClick={() => setSelectedCategory(String(category.id))}
                 className="whitespace-nowrap"
               >
@@ -222,61 +234,72 @@ export default function Menu() {
       {/* Scrollable Cart Items Section */}
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full p-6">
-          {cartItems.length === 0 ? (
-            <div className="text-center text-muted-foreground py-12">
-              <ShoppingCart className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>Your cart is empty</p>
-              <p className="text-sm mt-2">Add items to get started</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {cartItems.map((cartItem) => (
-                <Card key={cartItem.id} className="border-slate-200">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-medium">{cartItem.menuItem.name}</h4>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => useMenuStore.getState().removeFromCart(cartItem.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-primary">
-                        £{cartItem.totalPrice.toFixed(2)}
-                      </span>
-                      <div className="flex items-center space-x-2">
+          {cartItems.length === 0
+            ? (
+              <div className="text-center text-muted-foreground py-12">
+                <ShoppingCart className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>Your cart is empty</p>
+                <p className="text-sm mt-2">Add items to get started</p>
+              </div>
+            )
+            : (
+              <div className="space-y-4">
+                {cartItems.map((cartItem) => (
+                  <Card key={cartItem.id} className="border-slate-200">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-medium">
+                          {cartItem.menuItem.name}
+                        </h4>
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
                           onClick={() =>
-                            updateCartItemQuantity(cartItem.id, cartItem.quantity - 1)
-                          }
-                          className="h-8 w-8 p-0"
+                            useMenuStore.getState().removeFromCart(cartItem.id)}
+                          className="text-destructive hover:text-destructive"
                         >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-8 text-center">{cartItem.quantity}</span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            updateCartItemQuantity(cartItem.id, cartItem.quantity + 1)
-                          }
-                          className="h-8 w-8 p-0"
-                        >
-                          <Plus className="h-3 w-3" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-primary">
+                          £{cartItem.totalPrice.toFixed(2)}
+                        </span>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              updateCartItemQuantity(
+                                cartItem.id,
+                                cartItem.quantity - 1,
+                              )}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-8 text-center">
+                            {cartItem.quantity}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              updateCartItemQuantity(
+                                cartItem.id,
+                                cartItem.quantity + 1,
+                              )}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
         </ScrollArea>
       </div>
 
@@ -296,9 +319,15 @@ export default function Menu() {
           <Separator />
           <div className="flex justify-between items-center">
             <span className="text-lg font-semibold">Total</span>
-            <span className="text-xl font-bold text-primary">£{total.toFixed(2)}</span>
+            <span className="text-xl font-bold text-primary">
+              £{total.toFixed(2)}
+            </span>
           </div>
-          <Button onClick={() => setShowConfirmDialog(true)} className="w-full" size="lg">
+          <Button
+            onClick={() => setShowConfirmDialog(true)}
+            className="w-full"
+            size="lg"
+          >
             Confirm Order
           </Button>
         </div>
@@ -323,103 +352,151 @@ export default function Menu() {
                     className="w-24 h-24 rounded-lg object-cover"
                   />
                   <div>
-                    <DialogTitle className="text-xl">{selectedItem.name}</DialogTitle>
+                    <DialogTitle className="text-xl">
+                      {selectedItem.name}
+                    </DialogTitle>
                     <DialogDescription className="mt-2">
                       {selectedItem.description}
                     </DialogDescription>
-                    <Badge className="mt-2">£{selectedItem.price.toFixed(2)}</Badge>
+                    <Badge className="mt-2">
+                      £{selectedItem.price.toFixed(2)}
+                    </Badge>
                   </div>
                 </div>
               </DialogHeader>
 
               <div className="py-4">
-                {selectedItem.options.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Ready to add to cart!</p>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold">
-                        {curOption?.name}
-                        {curOption?.required && <span className="text-destructive ml-1">*</span>}
-                      </h3>
-                      <Badge variant="outline">
-                        {useMenuStore.getState().currentOptionIndex + 1} of{" "}
-                        {selectedItem.options.length}
-                      </Badge>
+                {selectedItem.options.length === 0
+                  ? (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">
+                        Ready to add to cart!
+                      </p>
                     </div>
-
-                    {/* Scrollable options section with limited height */}
-                    <ScrollArea className="h-64 pr-4">
-                      <div className="space-y-3">
-                        {curOption?.type === "radio" ? (
-                          <RadioGroup
-                            value={
-                              useMenuStore.getState().selectedOptions[curOption._id]?.[0] || ""
-                            }
-                            onValueChange={(value) => handleOptionChange(curOption._id, value, true)}
-                          >
-                            {curOption.choices?.map((choice) => (
-                              <div key={choice._id} className="flex items-center space-x-3 p-3 rounded-lg border">
-                                <RadioGroupItem value={choice._id} id={choice._id} />
-                                <Label htmlFor={choice._id} className="flex-1 cursor-pointer">
-                                  <div className="flex justify-between items-center">
-                                    <span>{choice.name}</span>
-                                    {choice.price > 0 && (
-                                      <span className="text-primary font-medium">
-                                        +£{choice.price.toFixed(2)}
-                                      </span>
-                                    )}
-                                  </div>
-                                </Label>
-                              </div>
-                            ))}
-                          </RadioGroup>
-                        ) : (
-                          <div className="space-y-3">
-                            {curOption?.choices?.map((choice) => {
-                              const isSelected =
-                                useMenuStore
-                                  .getState()
-                                  .selectedOptions[curOption._id]?.includes(choice._id) || false;
-                              return (
-                                <div key={choice._id} className="flex items-center space-x-3 p-3 rounded-lg border">
-                                  <Checkbox
-                                    id={choice._id}
-                                    checked={isSelected}
-                                    onCheckedChange={(checked) =>
-                                      handleOptionChange(curOption._id, choice._id, !!checked)
-                                    }
-                                  />
-                                  <Label htmlFor={choice._id} className="flex-1 cursor-pointer">
-                                    <div className="flex justify-between items-center w-full">
-                                      <span>{choice.name}</span>
-                                      {choice.price > 0 && (
-                                        <span className="text-primary font-medium">
-                                          +£{choice.price.toFixed(2)}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </Label>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
+                  )
+                  : (
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold">
+                          {curOption?.name}
+                          {curOption?.required && (
+                            <span className="text-destructive ml-1">*</span>
+                          )}
+                        </h3>
+                        <Badge variant="outline">
+                          {useMenuStore.getState().currentOptionIndex + 1} of
+                          {" "}
+                          {selectedItem.options.length}
+                        </Badge>
                       </div>
-                    </ScrollArea>
-                  </div>
-                )}
+
+                      {/* Scrollable options section with limited height */}
+                      <ScrollArea className="h-64 pr-4">
+                        <div className="space-y-3">
+                          {curOption?.type === "radio"
+                            ? (
+                              <RadioGroup
+                                value={useMenuStore.getState()
+                                  .selectedOptions[curOption._id]?.[0] || ""}
+                                onValueChange={(value) =>
+                                  handleOptionChange(
+                                    curOption._id,
+                                    value,
+                                    true,
+                                  )}
+                              >
+                                {curOption.choices?.map((choice) => (
+                                  <div
+                                    key={choice._id}
+                                    className="flex items-center space-x-3 p-3 rounded-lg border"
+                                  >
+                                    <RadioGroupItem
+                                      value={choice._id}
+                                      id={choice._id}
+                                    />
+                                    <Label
+                                      htmlFor={choice._id}
+                                      className="flex-1 cursor-pointer"
+                                    >
+                                      <div className="flex justify-between items-center">
+                                        <span>{choice.name}</span>
+                                        {choice.price > 0 && (
+                                          <span className="text-primary font-medium">
+                                            +£{choice.price.toFixed(2)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </Label>
+                                  </div>
+                                ))}
+                              </RadioGroup>
+                            )
+                            : (
+                              <div className="space-y-3">
+                                {curOption?.choices?.map((choice) => {
+                                  const isSelected = useMenuStore
+                                    .getState()
+                                    .selectedOptions[curOption._id]?.includes(
+                                      choice._id,
+                                    ) || false;
+                                  return (
+                                    <div
+                                      key={choice._id}
+                                      className="flex items-center space-x-3 p-3 rounded-lg border"
+                                    >
+                                      <Checkbox
+                                        id={choice._id}
+                                        checked={isSelected}
+                                        onCheckedChange={(checked) =>
+                                          handleOptionChange(
+                                            curOption._id,
+                                            choice._id,
+                                            !!checked,
+                                          )}
+                                      />
+                                      <Label
+                                        htmlFor={choice._id}
+                                        className="flex-1 cursor-pointer"
+                                      >
+                                        <div className="flex justify-between items-center w-full">
+                                          <span>{choice.name}</span>
+                                          {choice.price > 0 && (
+                                            <span className="text-primary font-medium">
+                                              +£{choice.price.toFixed(2)}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </Label>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  )}
 
                 {(lastStep || selectedItem.options.length === 0) && (
                   <div className="mt-6 pt-6 border-t">
                     <div className="flex items-center justify-center space-x-4">
-                      <Button variant="outline" size="sm" onClick={decQty} className="h-10 w-10 p-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={decQty}
+                        className="h-10 w-10 p-0"
+                      >
                         <Minus className="h-4 w-4" />
                       </Button>
-                      <span className="text-xl font-bold min-w-[3rem] text-center">{quantity}</span>
-                      <Button variant="outline" size="sm" onClick={incQty} className="h-10 w-10 p-0">
+                      <span className="text-xl font-bold min-w-[3rem] text-center">
+                        {quantity}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={incQty}
+                        className="h-10 w-10 p-0"
+                      >
                         <Plus className="h-4 w-4" />
                       </Button>
                     </div>
@@ -439,12 +516,16 @@ export default function Menu() {
                   className="w-full"
                   size="lg"
                 >
-                  <span>{lastStep || selectedItem.options.length === 0 ? "Add to Cart" : "Next"}</span>
+                  <span>
+                    {lastStep || selectedItem.options.length === 0
+                      ? "Add to Cart"
+                      : "Next"}
+                  </span>
                   <span className="ml-2 font-bold">
                     £{(
                       calculateItemPrice(
                         selectedItem,
-                        useMenuStore.getState().selectedOptions
+                        useMenuStore.getState().selectedOptions,
                       ) * quantity
                     ).toFixed(2)}
                   </span>
@@ -461,7 +542,9 @@ export default function Menu() {
           <DialogHeader>
             <DialogTitle>Confirm Order</DialogTitle>
             <DialogDescription>
-              {orderType === "pickup" ? "Pickup order" : `Table ${selectedTable}`}
+              {orderType === "pickup"
+                ? "Pickup order"
+                : `Table ${selectedTable}`}
             </DialogDescription>
           </DialogHeader>
 
@@ -474,9 +557,13 @@ export default function Menu() {
                 >
                   <div>
                     <p className="font-medium">{cartItem.menuItem.name}</p>
-                    <p className="text-sm text-muted-foreground">Qty: {cartItem.quantity}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Qty: {cartItem.quantity}
+                    </p>
                   </div>
-                  <p className="font-bold text-primary">£{cartItem.totalPrice.toFixed(2)}</p>
+                  <p className="font-bold text-primary">
+                    £{cartItem.totalPrice.toFixed(2)}
+                  </p>
                 </div>
               ))}
             </div>
@@ -491,11 +578,16 @@ export default function Menu() {
 
           <div className="flex justify-between items-center pt-4 border-t">
             <span className="text-lg font-semibold">Total</span>
-            <span className="text-xl font-bold text-primary">£{total.toFixed(2)}</span>
+            <span className="text-xl font-bold text-primary">
+              £{total.toFixed(2)}
+            </span>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmDialog(false)}
+            >
               Cancel
             </Button>
             <Button

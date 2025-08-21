@@ -15,7 +15,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCartOperations } from "@/core/hooks/cart_hooks";
+import { useCartOperations, useClearCart, useGetTableCart } from "@/core/hooks/cart_hooks";
 import { useAuth } from "@/core/hooks/use-auth";
 import { useGetRestaurantById } from "@/core/hooks/use-restaurant-hooks";
 import { useGetTables } from "@/core/hooks/use-tables-hooks";
@@ -52,15 +52,15 @@ export const Route = createFileRoute("/tables")({
 export default function TableSelection() {
   const auth = useAuth();
   const navigate = useNavigate();
-    const {
+  const {
     data: restaurant,
     isLoading: isRestaurantLoading,
-    } = useGetRestaurantById();
-  
+  } = useGetRestaurantById();
+
   useEffect(() => {
     if (restaurant?.data) {
       localStorage.setItem("x-foundation-id", restaurant.data.id);
-    } 
+    }
   }, [restaurant]);
 
   const {
@@ -78,8 +78,10 @@ export default function TableSelection() {
     getCart,
     updateItem,
     removeItem,
-    clearCart,
   } = useCartOperations(selectedTable?.id || "");
+
+  const clearCartMutation = useClearCart();
+  const getCartHook = useGetTableCart(selectedTable?.id || "");
 
 
   // Store restaurant data in local state instead of localStorage for better React patterns
@@ -163,7 +165,7 @@ export default function TableSelection() {
 
   const updateCartItemQuantity = (lineId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
-      removeItem(lineId);                 // lineId = optionsHash
+      removeItem(lineId); // lineId = optionsHash
     } else {
       updateItem(lineId, { quantity: newQuantity });
     }
@@ -323,19 +325,27 @@ export default function TableSelection() {
           <div className="p-6">
             {/* CLear button */}
             {selectedTable.status === "occupied" && (
-              (cart?.items?.length ?? 0) > 0 ?
-              <Button
-                variant="outline"
-                className="mb-4 w-full"
-                onClick={() => {
-                  if (confirm("Are you sure you want to clear this table?")) {
-                    clearCart();
-                  }
-                }}
-              >
-                Clear Table
-                </Button>
-              : null
+              (cart?.items?.length ?? 0) > 0
+                ? (
+                  <Button
+                    variant="outline"
+                    className="mb-4 w-full"
+                    onClick={() => {
+                      if (
+                        confirm("Are you sure you want to clear this table?")
+                      ) {
+                        clearCartMutation.mutate(
+                          selectedTable.id,
+                        );
+
+
+                      }
+                    }}
+                  >
+                    Clear Table
+                  </Button>
+                )
+                : null
             )}
 
             {/* Cart Items */}

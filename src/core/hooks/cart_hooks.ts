@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import type { AddItemToCartDto, Cart, UpdateCartItemDto } from "../models/dtos/cart-dtos";
 import { cartApi } from "../repositories/cart_repository";
 
@@ -39,7 +40,7 @@ export const useAddItemToCart = () => {
         onSuccess: (response, { tableId }) => {
             // Update the cart data in cache with the response
             queryClient.setQueryData(
-                CART_QUERY_KEYS.cart(tableId), 
+                CART_QUERY_KEYS.cart(tableId),
                 (response && typeof response === 'object' && 'data' in response) ? (response as any).data : response
             );
             // Also invalidate to ensure fresh data
@@ -60,8 +61,8 @@ export const useUpdateCartItem = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ optionsHash, data, tableId }: { 
-            optionsHash: string; 
+        mutationFn: ({ optionsHash, data, tableId }: {
+            optionsHash: string;
             data: UpdateCartItemDto;
             tableId: string;
         }) =>
@@ -69,7 +70,7 @@ export const useUpdateCartItem = () => {
         onSuccess: (response, { tableId }) => {
             // Update the cart data in cache with the response
             queryClient.setQueryData(
-                CART_QUERY_KEYS.cart(tableId), 
+                CART_QUERY_KEYS.cart(tableId),
                 response?.data || response
             );
             // Also invalidate to ensure fresh data
@@ -95,7 +96,7 @@ export const useRemoveCartItem = () => {
         onSuccess: (response, { tableId }) => {
             // Update the cart data in cache with the response
             queryClient.setQueryData(
-                CART_QUERY_KEYS.cart(tableId), 
+                CART_QUERY_KEYS.cart(tableId),
                 response?.data || response
             );
             // Also invalidate to ensure fresh data
@@ -113,15 +114,19 @@ export const useRemoveCartItem = () => {
  * Hook to clear entire cart
  */
 export const useClearCart = () => {
-                const queryClient = useQueryClient();
+    const queryClient = useQueryClient();
+    const navigate = useNavigate();
 
     return useMutation({
         mutationFn: (tableId: string) => cartApi.clearCart(tableId),
         onSuccess: (_response, tableId) => {
-            // Invalidate the cart query to ensure it refetches
+            // Invalidate the cart query to ensure it refetch
             queryClient.invalidateQueries({
                 queryKey: CART_QUERY_KEYS.cart(tableId),
             });
+            navigate({
+                reloadDocument: true,
+            })
         },
         onError: (error) => {
             console.error('Error clearing cart:', error);
@@ -148,7 +153,7 @@ export const useCartOperations = (tableId: string) => {
         error: cartQuery.error,
 
         // Mutations
-        addItem: (data: AddItemToCartDto) => 
+        addItem: (data: AddItemToCartDto) =>
             addItemMutation.mutate({ tableId, data }),
         updateItem: (optionsHash: string, data: UpdateCartItemDto) =>
             updateItemMutation.mutate({ optionsHash, data, tableId }),
@@ -168,9 +173,9 @@ export const useCartOperations = (tableId: string) => {
         isClearingCart: clearCartMutation.isPending,
 
         // Any mutation in progress
-        isProcessing: addItemMutation.isPending || 
-                     updateItemMutation.isPending || 
-                     removeItemMutation.isPending || 
-                     clearCartMutation.isPending,
+        isProcessing: addItemMutation.isPending ||
+            updateItemMutation.isPending ||
+            removeItemMutation.isPending ||
+            clearCartMutation.isPending,
     };
 };

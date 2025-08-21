@@ -704,7 +704,7 @@ const filteredItems = useMemo(() => {
               onClick={() => {
                 // toast.success("Order confirmed! Sent to kitchen.");
                 setShowConfirmDialog(false);
-                clearCart();
+                navigate({ to: "/tables" });
               }}
             >
               <Check className="w-4 h-4 mr-2" />

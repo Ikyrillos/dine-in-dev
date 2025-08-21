@@ -5,15 +5,15 @@ import { Menu as MenuIcon } from "lucide-react";
 import * as React from "react";
 
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import type { IMenuCategory } from "@/core/models/IMenuCategory";
@@ -65,7 +65,7 @@ const CategoryChooserDialog: React.FC<CategoryChooserDialogProps> = ({
         </AlertDialogHeader>
 
         {/* Choices */}
-        <div className="flex flex-wrap gap-2 py-2">
+        <div className="grid grid-cols-3 gap-2">
           {/* Dynamic Categories */}
           {categories?.data?.map((category) => {
             const isActive = String(selectedCategory) === String(category.id);

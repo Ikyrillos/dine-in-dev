@@ -61,7 +61,8 @@ export interface Restaurant {
     hasOrder?: boolean;
     hasCollection: boolean;
     minOrderPrice: number;
-
+    hasDineIn?: boolean;
+    hasPickup?: boolean;
     // Soft Delete Fields
     deleted?: boolean;
     deletedAt?: Date;

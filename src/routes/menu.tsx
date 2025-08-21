@@ -20,9 +20,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { useCartOperations } from "@/core/hooks/cart_hooks";
 import { useGetMenuCategories } from "@/core/hooks/get-categories-hooks";
 import { useGetMenuItems } from "@/core/hooks/get-menu-items";
-import { useMenuStore } from "@/core/store/menu-store";
+import type { CartItem } from "@/core/models/dtos/cart-dtos";
+import type { IMenuItem } from "@/core/models/IMenuItem";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -33,7 +35,7 @@ import {
   ShoppingCart,
   Trash2,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useMemo, useState } from "react";
 import { ResizableLayout } from "../components/resizable-layout";
 
 export const Route = createFileRoute("/menu")({
@@ -51,70 +53,179 @@ export const Route = createFileRoute("/menu")({
 export default function Menu() {
   const navigate = useNavigate();
 
+  // Local state with hooks
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<IMenuItem | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [notes, setNotes] = useState("");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [orderType] = useState("pickup");
+  const [selectedTable] = useState("");
+  const [currentOptionIndex, setCurrentOptionIndex] = useState(0);
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>({});
+
+  // params tableId
+  const tableId = new URLSearchParams(window.location.search).get("tableId");
+
   const { data: categories, isLoading: categoriesLoading } =
     useGetMenuCategories();
   const { data: menuItems, isLoading: menuItemsLoading } = useGetMenuItems();
-
   const {
-    // data + wiring
-    setData,
-    hydrateOrderContextFromStorage,
-
-    // ui state
-    searchQuery,
-    setSearchQuery,
-    selectedCategory,
-    setSelectedCategory,
-    selectedItem,
-    setSelectedItem,
-    currentOption,
-    filteredItems,
-    isLastStep,
-    canProceed,
-    calculateItemPrice,
-    nextOrAddToCart,
-    incQty,
-    decQty,
-    quantity,
-
-    // cart + notes
-    cartItems,
-    updateCartItemQuantity,
-    totalAmount,
-    notes,
-    setNotes,
-    showConfirmDialog,
-    setShowConfirmDialog,
+    cart,
+    addItem,
+    updateItem,
+    removeItem,
     clearCart,
+  } = useCartOperations(tableId ?? "");
 
-    // order context
-    orderType,
-    selectedTable,
+  // Computed values using useMemo for performance
+// ✅ robust, headache-free filtering
+const filteredItems = useMemo(() => {
+  const items = menuItems?.data ?? [];
+  if (!items.length) return [];
 
-    // option changes
-    handleOptionChange,
-    startConfigForItem,
-  } = useMenuStore();
+  // normalize selected category
+  const selected = selectedCategory?.toString().trim();
+  const hasCategory = !!selected;
 
-  // push fetched data into store
-  useEffect(() => {
-    if (categories?.data || menuItems?.data) {
-      setData({
-        categories: categories?.data ?? undefined,
-        menuItems: menuItems?.data ?? undefined,
+  return items.filter((item: any) => {
+    // --- category match (support multiple common shapes) ---
+    const itemCat =
+      item.categoryId ??
+      item.category?.id ??
+      item.category?._id ??
+      item.category ??
+      item.category_id ??
+      item.categoryID;
+
+    const matchCategory = !hasCategory || String(itemCat) === selected;
+
+    // --- search match (name / description safe-lowercase) ---
+    const q = (searchQuery || "").trim().toLowerCase();
+    const matchSearch =
+      !q ||
+      (item.name ?? "").toLowerCase().includes(q) ||
+      (item.description ?? "").toLowerCase().includes(q);
+
+    return matchCategory && matchSearch;
+  });
+}, [menuItems?.data, selectedCategory, searchQuery]);
+
+
+
+  const cartItems = useMemo(() => {
+    return (cart?.items || []) as CartItem[];
+  }, [cart?.items]);
+
+  const totalAmount = useMemo(() => {
+    return cart?.totalAmount || 0;
+  }, [cart?.totalAmount]);
+
+  const currentOption = useMemo(() => {
+    if (!selectedItem?.options?.length) return null;
+    return selectedItem.options[currentOptionIndex];
+  }, [selectedItem, currentOptionIndex]);
+
+  const isLastStep = useMemo(() => {
+    if (!selectedItem?.options?.length) return true;
+    return currentOptionIndex === selectedItem.options.length - 1;
+  }, [selectedItem, currentOptionIndex]);
+
+  // Helper functions
+  const resetConfiguration = () => {
+    setCurrentOptionIndex(0);
+    setSelectedOptions({});
+  };
+
+  const startConfigForItem = (item: any) => {
+    setSelectedItem(item);
+    setQuantity(1);
+    resetConfiguration();
+  };
+
+  const handleOptionChange = (optionId: string, choiceId: string, isSelected: boolean) => {
+    setSelectedOptions(prev => {
+      const currentSelections = prev[optionId] || [];
+      
+      if (isSelected) {
+        // For radio type, replace all selections. For checkbox, add to selections
+        const option = selectedItem?.options?.find((opt: any) => opt._id === optionId);
+        if (option?.type === "radio") {
+          return { ...prev, [optionId]: [choiceId] };
+        } else {
+          return { ...prev, [optionId]: [...currentSelections, choiceId] };
+        }
+      } else {
+        // Remove the choice
+        return { ...prev, [optionId]: currentSelections.filter(id => id !== choiceId) };
+      }
+    });
+  };
+
+  const canProceed = () => {
+    if (!currentOption) return true;
+    if (!currentOption.required) return true;
+    
+    const optionSelections = selectedOptions[currentOption._id];
+    return optionSelections && optionSelections.length > 0;
+  };
+
+  const calculateItemPrice = (item: any, itemSelectedOptions: any) => {
+    let basePrice = item.price;
+    let optionsPrice = 0;
+
+    item.options?.forEach((option: any) => {
+      const selections = itemSelectedOptions[option._id] || [];
+      selections.forEach((choiceId: string) => {
+        const choice = option.choices?.find((c: any) => c._id === choiceId);
+        if (choice) {
+          optionsPrice += choice.price || 0;
+        }
       });
+    });
+
+    return basePrice + optionsPrice;
+  };
+
+  const nextStep = () => {
+    setCurrentOptionIndex(prev => prev + 1);
+  };
+
+  const nextOrAddToCart = () => {
+    if (!selectedItem) return;
+
+    if (isLastStep || selectedItem.options.length === 0) {
+      // Add to cart
+      const cartItemOptions = Object.entries(selectedOptions).map(([optionId, choiceIds]) => ({
+        optionId,
+        choiceIds: Array.isArray(choiceIds) ? choiceIds : [choiceIds],
+      }));
+
+      addItem({
+        menuItemId: selectedItem._id,
+        quantity,
+        selectedOptions: cartItemOptions,
+      });
+
+      setSelectedItem(null);
+      resetConfiguration();
+    } else {
+      // Go to next option
+      nextStep();
     }
-  }, [categories?.data, menuItems?.data, setData]);
+  };
 
-  // hydrate order context once
-  useEffect(() => {
-    hydrateOrderContextFromStorage();
-  }, [hydrateOrderContextFromStorage]);
+  const incQty = () => setQuantity(prev => prev + 1);
+  const decQty = () => setQuantity(prev => Math.max(1, prev - 1));
 
-  const items = filteredItems();
-  const total = totalAmount();
-  const curOption = currentOption();
-  const lastStep = isLastStep();
+  const updateCartItemQuantity = (itemId: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      removeItem(itemId);
+    } else {
+      updateItem(itemId, { quantity: newQuantity });
+    }
+  };
 
   if (menuItemsLoading || categoriesLoading) {
     return <Spinner />;
@@ -186,7 +297,7 @@ export default function Menu() {
       <div className="flex-1 overflow-hidden">
         <div className="h-full overflow-y-auto p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {items.map((item) => (
+            {filteredItems.map((item) => (
               <div
                 key={item._id}
                 className="flex items-center justify-between p-2 mb-2 border border-gray-200 rounded-lg cursor-pointer hover:shadow-md hover:bg-gray-50 transition-all"
@@ -244,8 +355,9 @@ export default function Menu() {
             )
             : (
               <div className="space-y-4">
-                {cartItems.map((cartItem) => (
-                  <Card key={cartItem.id} className="border-slate-200">
+              
+                {cartItems.map((cartItem: CartItem) => (
+                  <Card key={cartItem.menuItem._id} className="border-slate-200">
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start mb-2">
                         <h4 className="font-medium">
@@ -255,7 +367,7 @@ export default function Menu() {
                           variant="ghost"
                           size="sm"
                           onClick={() =>
-                            useMenuStore.getState().removeFromCart(cartItem.id)}
+                            removeItem(cartItem.menuItem._id)}
                           className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -271,7 +383,7 @@ export default function Menu() {
                             size="sm"
                             onClick={() =>
                               updateCartItemQuantity(
-                                cartItem.id,
+                                cartItem.menuItem._id,
                                 cartItem.quantity - 1,
                               )}
                             className="h-8 w-8 p-0"
@@ -286,7 +398,7 @@ export default function Menu() {
                             size="sm"
                             onClick={() =>
                               updateCartItemQuantity(
-                                cartItem.id,
+                                cartItem.menuItem._id,
                                 cartItem.quantity + 1,
                               )}
                             className="h-8 w-8 p-0"
@@ -320,7 +432,7 @@ export default function Menu() {
           <div className="flex justify-between items-center">
             <span className="text-lg font-semibold">Total</span>
             <span className="text-xl font-bold text-primary">
-              £{total.toFixed(2)}
+              £{totalAmount.toFixed(2)}
             </span>
           </div>
           <Button
@@ -378,34 +490,31 @@ export default function Menu() {
                     <div>
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-semibold">
-                          {curOption?.name}
-                          {curOption?.required && (
+                          {currentOption?.name}
+                          {currentOption?.required && (
                             <span className="text-destructive ml-1">*</span>
                           )}
                         </h3>
                         <Badge variant="outline">
-                          {useMenuStore.getState().currentOptionIndex + 1} of
-                          {" "}
-                          {selectedItem.options.length}
+                          {currentOptionIndex + 1} of {selectedItem.options.length}
                         </Badge>
                       </div>
 
                       {/* Scrollable options section with limited height */}
                       <ScrollArea className="h-64 pr-4">
                         <div className="space-y-3">
-                          {curOption?.type === "radio"
+                          {currentOption?.type === "radio"
                             ? (
                               <RadioGroup
-                                value={useMenuStore.getState()
-                                  .selectedOptions[curOption._id]?.[0] || ""}
+                                value={selectedOptions[currentOption._id]?.[0] || ""}
                                 onValueChange={(value) =>
                                   handleOptionChange(
-                                    curOption._id,
+                                    currentOption._id,
                                     value,
                                     true,
                                   )}
                               >
-                                {curOption.choices?.map((choice) => (
+                                {currentOption.choices?.map((choice) => (
                                   <div
                                     key={choice._id}
                                     className="flex items-center space-x-3 p-3 rounded-lg border"
@@ -422,7 +531,7 @@ export default function Menu() {
                                         <span>{choice.name}</span>
                                         {choice.price > 0 && (
                                           <span className="text-primary font-medium">
-                                            +£{choice.price.toFixed(2)}
+                                            £{choice.price.toFixed(2)}
                                           </span>
                                         )}
                                       </div>
@@ -433,12 +542,10 @@ export default function Menu() {
                             )
                             : (
                               <div className="space-y-3">
-                                {curOption?.choices?.map((choice) => {
-                                  const isSelected = useMenuStore
-                                    .getState()
-                                    .selectedOptions[curOption._id]?.includes(
-                                      choice._id,
-                                    ) || false;
+                                {currentOption?.choices?.map((choice) => {
+                                  const isSelected = selectedOptions[currentOption._id]?.includes(
+                                    choice._id,
+                                  ) || false;
                                   return (
                                     <div
                                       key={choice._id}
@@ -449,7 +556,7 @@ export default function Menu() {
                                         checked={isSelected}
                                         onCheckedChange={(checked) =>
                                           handleOptionChange(
-                                            curOption._id,
+                                            currentOption._id,
                                             choice._id,
                                             !!checked,
                                           )}
@@ -459,10 +566,12 @@ export default function Menu() {
                                         className="flex-1 cursor-pointer"
                                       >
                                         <div className="flex justify-between items-center w-full">
-                                          <span>{choice.name}</span>
+                                          <span
+                                            className="w-72"
+                                          >{choice.name}</span>
                                           {choice.price > 0 && (
                                             <span className="text-primary font-medium">
-                                              +£{choice.price.toFixed(2)}
+                                              £{choice.price.toFixed(2)}
                                             </span>
                                           )}
                                         </div>
@@ -477,7 +586,7 @@ export default function Menu() {
                     </div>
                   )}
 
-                {(lastStep || selectedItem.options.length === 0) && (
+                {(isLastStep || selectedItem.options.length === 0) && (
                   <div className="mt-6 pt-6 border-t">
                     <div className="flex items-center justify-center space-x-4">
                       <Button
@@ -507,9 +616,10 @@ export default function Menu() {
               <DialogFooter>
                 <Button
                   onClick={() => {
-                    nextOrAddToCart();
-                    if (lastStep || selectedItem.options.length === 0) {
-                      // toast.success("Item added to cart!");
+                    if (isLastStep || selectedItem.options.length === 0) {
+                      nextOrAddToCart();
+                    } else {
+                      nextStep();
                     }
                   }}
                   disabled={!canProceed()}
@@ -517,7 +627,7 @@ export default function Menu() {
                   size="lg"
                 >
                   <span>
-                    {lastStep || selectedItem.options.length === 0
+                    {isLastStep || selectedItem.options.length === 0
                       ? "Add to Cart"
                       : "Next"}
                   </span>
@@ -525,7 +635,7 @@ export default function Menu() {
                     £{(
                       calculateItemPrice(
                         selectedItem,
-                        useMenuStore.getState().selectedOptions,
+                        selectedOptions,
                       ) * quantity
                     ).toFixed(2)}
                   </span>
@@ -552,7 +662,7 @@ export default function Menu() {
             <div className="space-y-4">
               {cartItems.map((cartItem) => (
                 <div
-                  key={cartItem.id}
+                  key={cartItem.menuItem._id}
                   className="flex justify-between items-center p-3 bg-slate-50 rounded-lg"
                 >
                   <div>
@@ -579,7 +689,7 @@ export default function Menu() {
           <div className="flex justify-between items-center pt-4 border-t">
             <span className="text-lg font-semibold">Total</span>
             <span className="text-xl font-bold text-primary">
-              £{total.toFixed(2)}
+              £{totalAmount.toFixed(2)}
             </span>
           </div>
 

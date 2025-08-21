@@ -15,6 +15,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useCartOperations } from "@/core/hooks/cart_hooks";
 import { useAuth } from "@/core/hooks/use-auth";
 import { useGetRestaurantById } from "@/core/hooks/use-restaurant-hooks";
 import { useGetTables } from "@/core/hooks/use-tables-hooks";
@@ -23,9 +24,11 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Banknote,
-  Clock,
   CreditCard,
+  Minus,
+  Plus,
   ShoppingBag,
+  Trash2,
   Users,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -49,26 +52,45 @@ export const Route = createFileRoute("/tables")({
 export default function TableSelection() {
   const auth = useAuth();
   const navigate = useNavigate();
+    const {
+    data: restaurant,
+    isLoading: isRestaurantLoading,
+    } = useGetRestaurantById();
+  
+  useEffect(() => {
+    if (restaurant?.data) {
+      localStorage.setItem("x-foundation-id", restaurant.data.id);
+    } 
+  }, [restaurant]);
+
   const {
     data: tables,
     isLoading: isTablesLoading,
     refetch: refetchTables,
   } = useGetTables();
+
+  // Local state with hooks
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
+  const [restaurantData, setRestaurantData] = useState<any>(null);
   const {
-    data: restaurant,
-    isLoading: isRestaurantLoading,
-  } = useGetRestaurantById();
+    cart,
+    getCart,
+    updateItem,
+    removeItem,
+    clearCart,
+  } = useCartOperations(selectedTable?.id || "");
 
+
+  // Store restaurant data in local state instead of localStorage for better React patterns
   useEffect(() => {
     if (restaurant?.data) {
-      localStorage.setItem("x-foundation-id", restaurant.data.id);
-      console.log("x-foundation-id", localStorage.getItem("x-foundation-id"));
-      console.log("x-foundation-id before", restaurant.data.id);
+      setRestaurantData(restaurant.data);
+      // Only use localStorage for persistence if absolutely necessary
+      // Consider using a more React-friendly approach like context or props
       refetchTables();
     }
-  }, [restaurant?.data]);
+  }, [restaurant?.data, refetchTables]);
 
   const getTableVariant = (status: string) => {
     switch (status) {
@@ -104,33 +126,47 @@ export default function TableSelection() {
     }
   };
 
-const handleTableClick = (table: Table) => {
-  if (table.status === "free") {  // Changed from "empty" to "free"
-    localStorage.setItem("selectedTable", table.id.toString());
-    navigate({
-      to: "/menu",
-    });
-  } else {
-    setSelectedTable(table);
-    setShowPaymentOptions(false);
-  }
-};
+  const handleTableClick = (table: Table) => {
+    if (table.status === "free") {
+      // Store table selection in component state or pass via navigation
+      navigate({
+        to: "/menu",
+        search: {
+          tableId: table.id,
+        },
+      });
+    } else {
+      setSelectedTable(table);
+      setShowPaymentOptions(false);
+    }
 
-  const handleOrderForTable = (tableId: number) => {
-    localStorage.setItem("selectedTable", tableId.toString());
+    getCart();
+  };
+
+  const handleOrderForTable = (tableId: string) => {
     navigate({
       to: "/menu",
+      search: {
+        tableId: tableId,
+      },
     });
   };
 
-  console.log(handleOrderForTable);
-
   const handlePickupOrder = () => {
-    localStorage.setItem("orderType", "pickup");
-    localStorage.removeItem("selectedTable");
     navigate({
       to: "/menu",
+      search: {
+        orderType: "pickup",
+      },
     });
+  };
+
+  const updateCartItemQuantity = (lineId: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      removeItem(lineId);                 // lineId = optionsHash
+    } else {
+      updateItem(lineId, { quantity: newQuantity });
+    }
   };
 
   if (isRestaurantLoading || isTablesLoading) {
@@ -156,9 +192,9 @@ const handleTableClick = (table: Table) => {
                   className="relative h-12 w-12 rounded-full"
                 >
                   <Avatar className="h-12 w-12">
-                    <AvatarImage src={restaurant?.data.logo} alt="Profile" />
+                    <AvatarImage src={restaurantData?.logo} alt="Profile" />
                     <AvatarFallback className="bg-transparent text-primary-foreground">
-                      <img src={"/placeholder.svg" } alt="Logo" />
+                      <img src={"/placeholder.svg"} alt="Logo" />
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -172,16 +208,6 @@ const handleTableClick = (table: Table) => {
                   </div>
                 </div>
                 <DropdownMenuSeparator />
-                {
-                  /* <DropdownMenuItem onClick={() => navigate({ to: "/menu" })}>
-                  <BarChart3 className="mr-2 h-4 w-4" />
-                  Analytics
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </DropdownMenuItem> */
-                }
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => {
@@ -195,7 +221,7 @@ const handleTableClick = (table: Table) => {
             </DropdownMenu>
             <div>
               <h1 className="text-2xl font-bold text-slate-900">
-                {restaurant?.data.name}
+                {restaurantData?.name}
               </h1>
               <p className="text-sm text-slate-600">Restaurant Management</p>
             </div>
@@ -295,6 +321,24 @@ const handleTableClick = (table: Table) => {
         {/* Content */}
         <ScrollArea className="flex-1">
           <div className="p-6">
+            {/* CLear button */}
+            {selectedTable.status === "occupied" && (
+              (cart?.items?.length ?? 0) > 0 ?
+              <Button
+                variant="outline"
+                className="mb-4 w-full"
+                onClick={() => {
+                  if (confirm("Are you sure you want to clear this table?")) {
+                    clearCart();
+                  }
+                }}
+              >
+                Clear Table
+                </Button>
+              : null
+            )}
+
+            {/* Cart Items */}
             {showPaymentOptions
               ? (
                 <div className="space-y-4">
@@ -329,26 +373,67 @@ const handleTableClick = (table: Table) => {
               : (
                 <div className="space-y-6">
                   {/* Reservation Details */}
-                  {selectedTable.status !== "free" && (
-                    <div>
-                      <h3 className="font-semibold mb-4">
-                        Reservation Details
-                      </h3>
-                      <Card className="border-amber-200 bg-amber-50">
-                        <CardContent className="p-4 space-y-3">
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-amber-600" />
+                  {cart?.items?.map((cartItem) => (
+                    <Card
+                      key={cartItem.optionsHash}
+                      className="border-slate-200"
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-medium">
+                            {cartItem.menuItem?.name ?? "Item"}
+                          </h4>
+
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeItem(cartItem.optionsHash)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-primary">
+                            £{Number(cartItem.totalPrice).toFixed(2)}
+                          </span>
+
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                updateCartItemQuantity(
+                                  cartItem.optionsHash,
+                                  cartItem.quantity - 1,
+                                )}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+
+                            <span className="w-8 text-center">
+                              {cartItem.quantity}
+                            </span>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                updateCartItemQuantity(
+                                  cartItem.optionsHash,
+                                  cartItem.quantity + 1,
+                                )}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-amber-600" />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-amber-600" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               )}
           </div>
@@ -358,11 +443,15 @@ const handleTableClick = (table: Table) => {
         <div className="border-t border-slate-200 p-6">
           {!showPaymentOptions && (
             <div className="space-y-3">
-              {
-                /* <Button onClick={() => handleOrderForTable(selectedTable.id)} className="w-full" size="lg">
-              {selectedTable.status === "occupied" ? "Add More Items" : "Start Order"}
-            </Button> */
-              }
+              <Button
+                onClick={() => handleOrderForTable(selectedTable.id)}
+                className="w-full"
+                size="lg"
+              >
+                {selectedTable.status === "occupied"
+                  ? "Add More Items"
+                  : "Start Order"}
+              </Button>
               {(selectedTable.status === "occupied" ||
                 selectedTable.status === "reserved") && (
                 <Button

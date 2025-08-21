@@ -2,15 +2,16 @@ import { useQuery } from "@tanstack/react-query";
 import { tablesRepository } from "../repositories/tables-repository";
 
 export const queryKeys = {
-    tables: 'tables',
-    table: (id: string) => ['table', id],
+  tables: "tables",
+  table: (id: string) => ["table", id],
 };
 
 export const useGetTables = () => {
-  
-  const foundationId =  localStorage.getItem(
-        "x-foundation-id",
-    );
+
+  const foundationId = localStorage.getItem(
+    "x-foundation-id",
+  );
+
   return useQuery(
     {
       queryKey: [queryKeys.tables],
@@ -18,7 +19,6 @@ export const useGetTables = () => {
       enabled: !!foundationId,
       retry: true,
       retryDelay: 500,
-    }
-   
+    },
   );
 };

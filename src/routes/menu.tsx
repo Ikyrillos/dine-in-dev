@@ -76,7 +76,7 @@ export default function Menu() {
     addItem,
     updateItem,
     removeItem,
-    clearCart,
+    // clearCart,
   } = useCartOperations(tableId ?? "");
 
   const cartCheckout = useCheckoutCart();

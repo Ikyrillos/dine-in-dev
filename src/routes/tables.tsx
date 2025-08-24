@@ -6,30 +6,37 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCartOperations, useClearCart } from "@/core/hooks/cart_hooks";
+import { Textarea } from "@/components/ui/textarea";
+import { useCartOperations, useCheckoutCart, useClearCart } from "@/core/hooks/cart_hooks";
 import { useAuth } from "@/core/hooks/use-auth";
 import { useGetRestaurantById } from "@/core/hooks/use-restaurant-hooks";
 import { useGetTables } from "@/core/hooks/use-tables-hooks";
 import type { Table } from "@/core/models/TableModel";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import {
-  ArrowLeft,
-  Banknote,
-  CreditCard,
+  Check,
   Minus,
   Plus,
   ShoppingBag,
   Trash2,
-  Users,
+  Users
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -71,7 +78,8 @@ export default function TableSelection() {
 
   // Local state with hooks
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
-  const [showPaymentOptions, setShowPaymentOptions] = useState(false);
+  const [showConfirmOrderDialog, setShowConfirmOrderDialog] = useState(false);
+  const [orderNotes, setOrderNotes] = useState("");
   const [restaurantData, setRestaurantData] = useState<any>(null);
   const [defaultTabValue, setDefaultTabValue] = useState<string>("dine-in");
 
@@ -83,6 +91,7 @@ export default function TableSelection() {
   } = useCartOperations(selectedTable?.id || "");
 
   const clearCartMutation = useClearCart();
+  const cartCheckout = useCheckoutCart();
 
   // Store restaurant data in local state instead of localStorage for better React patterns
   useEffect(() => {
@@ -157,7 +166,6 @@ export default function TableSelection() {
       });
     } else {
       setSelectedTable(table);
-      setShowPaymentOptions(false);
     }
 
     getCart();
@@ -189,9 +197,20 @@ export default function TableSelection() {
     }
   };
 
-  function handleCashPayment(): void {
-    setShowPaymentOptions(!showPaymentOptions);
-  }
+  const handleConfirmOrder = () => {
+    if (!selectedTable) return;
+    
+    cartCheckout.mutate({ 
+      tableId: selectedTable.id, 
+      note: orderNotes 
+    });
+    
+    setShowConfirmOrderDialog(false);
+    setOrderNotes("");
+  };
+
+  const totalAmount = cart?.totalAmount || 0;
+  const cartItems = cart?.items || [];
 
   if (isRestaurantLoading || isTablesLoading) {
     return (
@@ -408,134 +427,97 @@ export default function TableSelection() {
             )}
 
             {/* Cart Items */}
-            {showPaymentOptions
-              ? (
-                <div className="space-y-4">
-                  <Button
-                    variant="ghost"
-                    onClick={() => setShowPaymentOptions(false)}
-                    className="w-full justify-start"
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to table details
-                  </Button>
-                  <Separator />
-                  <div className="space-y-3">
-                    <h3 className="font-semibold text-lg">Payment Options</h3>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start h-12 bg-transparent"
-                      onClick={() => alert("Card payment not implemented yet")}
-                    >
-                      <CreditCard className="mr-3 h-5 w-5" />
-                      Card Payment
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start h-12 bg-transparent"
-                      onClick={() => handleCashPayment()}
-                    >
-                      <Banknote className="mr-3 h-5 w-5" />
-                      Cash Payment
-                    </Button>
-                  </div>
-                </div>
-              )
-              : (
-                <div className="space-y-6">
-                  {/* Reservation Details */}
-                  {cart?.items?.map((cartItem) => (
-                    <Card
-                      key={cartItem.optionsHash}
-                      className="border-slate-200"
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-medium">
-                            {cartItem.menuItem?.name ?? "Item"}
-                          </h4>
+            <div className="space-y-6">
+              {cartItems?.map((cartItem) => (
+                <Card
+                  key={cartItem.optionsHash}
+                  className="border-slate-200"
+                >
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-medium">
+                        {cartItem.menuItem?.name ?? "Item"}
+                      </h4>
 
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeItem(cartItem.optionsHash)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeItem(cartItem.optionsHash)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
 
-                        <div className="flex justify-between items-center">
-                          <span className="font-bold text-primary">
-                            £{Number(cartItem.totalPrice).toFixed(2)}
-                          </span>
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-primary">
+                        £{Number(cartItem.totalPrice).toFixed(2)}
+                      </span>
 
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                updateCartItemQuantity(
-                                  cartItem.optionsHash,
-                                  cartItem.quantity - 1,
-                                )}
-                              className="h-8 w-8 p-0"
-                            >
-                              <Minus className="h-3 w-3" />
-                            </Button>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            updateCartItemQuantity(
+                              cartItem.optionsHash,
+                              cartItem.quantity - 1,
+                            )}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
 
-                            <span className="w-8 text-center">
-                              {cartItem.quantity}
-                            </span>
+                        <span className="w-8 text-center">
+                          {cartItem.quantity}
+                        </span>
 
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                updateCartItemQuantity(
-                                  cartItem.optionsHash,
-                                  cartItem.quantity + 1,
-                                )}
-                              className="h-8 w-8 p-0"
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            updateCartItemQuantity(
+                              cartItem.optionsHash,
+                              cartItem.quantity + 1,
+                            )}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </ScrollArea>
 
         {/* Footer */}
         <div className="border-t border-slate-200 p-6">
-          {!showPaymentOptions && (
-            <div className="space-y-3">
+          <div className="space-y-3">
+            <Button
+              onClick={() => handleOrderForTable(selectedTable.id)}
+              className="w-full"
+              size="lg"
+            >
+              {selectedTable.status === "occupied"
+                ? "Add More Items"
+                : "Start Order"}
+            </Button>
+            {(selectedTable.status === "occupied" ||
+              selectedTable.status === "reserved") && cartItems.length > 0 && (
               <Button
-                onClick={() => handleOrderForTable(selectedTable.id)}
+                onClick={() => setShowConfirmOrderDialog(true)}
+                variant="outline"
                 className="w-full"
                 size="lg"
               >
-                {selectedTable.status === "occupied"
-                  ? "Add More Items"
-                  : "Start Order"}
+                <Check className="w-4 h-4 mr-2" />
+                Confirm Order
               </Button>
-              {(selectedTable.status === "occupied" ||
-                selectedTable.status === "reserved") && (
-                <Button
-                  onClick={() => setShowPaymentOptions(true)}
-                  variant="outline"
-                  className="w-full"
-                  size="lg"
-                >
-                  Process Payment
-                </Button>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </>
     )
@@ -554,6 +536,75 @@ export default function TableSelection() {
   return (
     <div className="min-h-screen bg-slate-50">
       <ResizableLayout sidebar={sidebarContent}>{mainContent}</ResizableLayout>
+
+      {/* Confirm Order Dialog */}
+      <Dialog open={showConfirmOrderDialog} onOpenChange={setShowConfirmOrderDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Confirm Order</DialogTitle>
+            <DialogDescription>
+              Table {selectedTable?.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          <ScrollArea className="max-h-96">
+            <div className="space-y-4">
+              {cartItems.map((cartItem) => (
+                <div
+                  key={cartItem.optionsHash}
+                  className="flex justify-between items-center p-3 bg-slate-50 rounded-lg"
+                >
+                  <div>
+                    <p className="font-medium">{cartItem.menuItem?.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Qty: {cartItem.quantity}
+                    </p>
+                  </div>
+                  <p className="font-bold text-primary">
+                    £{Number(cartItem.totalPrice).toFixed(2)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+
+          {/* Order Notes Section */}
+          <div className="mt-4">
+            <Label htmlFor="orderNotes" className="text-sm font-medium">Special Instructions</Label>
+            <Textarea
+              id="orderNotes"
+              placeholder="Any special requests..."
+              value={orderNotes}
+              onChange={(e) => setOrderNotes(e.target.value)}
+              className="mt-2"
+              rows={3}
+            />
+          </div>
+
+          <div className="flex justify-between items-center pt-4 border-t">
+            <span className="text-lg font-semibold">Total</span>
+            <span className="text-xl font-bold text-primary">
+              £{totalAmount.toFixed(2)}
+            </span>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmOrderDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmOrder}
+              disabled={cartCheckout.isPending}
+            >
+              <Check className="w-4 h-4 mr-2" />
+              {cartCheckout.isPending ? "Confirming..." : "Confirm Order"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

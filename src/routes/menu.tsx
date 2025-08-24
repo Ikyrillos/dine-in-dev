@@ -20,7 +20,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { useCartOperations } from "@/core/hooks/cart_hooks";
+import { useCartOperations, useCheckoutCart } from "@/core/hooks/cart_hooks";
 import { useGetMenuCategories } from "@/core/hooks/get-categories-hooks";
 import { useGetMenuItems } from "@/core/hooks/get-menu-items";
 import type { CartItem } from "@/core/models/dtos/cart-dtos";
@@ -78,6 +78,8 @@ export default function Menu() {
     removeItem,
     clearCart,
   } = useCartOperations(tableId ?? "");
+
+  const cartCheckout = useCheckoutCart();
 
   // Computed values using useMemo for performance
 // ✅ robust, headache-free filtering
@@ -702,9 +704,8 @@ const filteredItems = useMemo(() => {
             </Button>
             <Button
               onClick={() => {
-                // toast.success("Order confirmed! Sent to kitchen.");
                 setShowConfirmDialog(false);
-                navigate({ to: "/tables" });
+                cartCheckout.mutate({ tableId: tableId || "", note: notes });
               }}
             >
               <Check className="w-4 h-4 mr-2" />

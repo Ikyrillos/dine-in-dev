@@ -1,8 +1,39 @@
 import { BASE_URL } from "../apis-endpoints";
 import { makeRequest } from "../make-request";
-import type { AddItemToCartDto, Cart, UpdateCartItemDto } from "../models/dtos/cart-dtos";
+import type {
+    AddItemToCartDto,
+    Cart,
+    UpdateCartItemDto,
+} from "../models/dtos/cart-dtos";
+
+interface CheckoutRequest {
+    tableId: string;
+    note?: string;
+    promoCode?: string;
+    source: string;
+    successUrl?: string;
+    failUrl?: string;
+}
 
 class CartRepository {
+    checkoutCart(
+        tableId: string,
+        note?: string,
+        promoCode?: string,
+    ): Promise<unknown> {
+        return makeRequest<CheckoutRequest, unknown>({
+            method: "POST",
+            url: `${BASE_URL}/tables/${tableId}/checkout`,
+            data: {
+                tableId,
+                note,
+                promoCode,
+                source: "Dine-in",
+                successUrl: "https://www.secondserving.uk/",
+                failUrl: "https://www.secondserving.uk/",
+            },
+        });
+    }
     /**
      * Add item to table cart
      * @param tableId Table ID
@@ -10,10 +41,12 @@ class CartRepository {
      * @returns Updated cart data
      */
     async addItemToTable(tableId: string, data: AddItemToCartDto) {
+        const foundationId = localStorage.getItem("x-foundation-id");
         return await makeRequest<typeof data, Cart>({
-            method: 'POST',
+            method: "POST",
             url: `${BASE_URL}/tables/${tableId}/add-to-table`,
             data,
+            headers: { "x-foundation-id": foundationId || "" },
         });
     }
 
@@ -23,9 +56,13 @@ class CartRepository {
      * @param data Update data containing new quantity
      * @returns Updated cart data
      */
-    async updateCartItem(optionsHash: string, data: UpdateCartItemDto, tableId: string) {
+    async updateCartItem(
+        optionsHash: string,
+        data: UpdateCartItemDto,
+        tableId: string,
+    ) {
         return await makeRequest<typeof data, Cart>({
-            method: 'PUT',
+            method: "PUT",
             url: `${BASE_URL}/tables/${tableId}/${optionsHash}`,
             data,
         });
@@ -39,7 +76,7 @@ class CartRepository {
      */
     async removeCartItem(tableId: string, optionsHash: string) {
         return await makeRequest<void, Cart>({
-            method: 'DELETE',
+            method: "DELETE",
             url: `${BASE_URL}/tables/${tableId}/${optionsHash}`,
         });
     }
@@ -51,7 +88,7 @@ class CartRepository {
      */
     async clearCart(tableId: string) {
         return await makeRequest<void, Cart>({
-            method: 'DELETE',
+            method: "DELETE",
             url: `${BASE_URL}/tables/${tableId}/clear-cart`,
         });
     }
@@ -63,7 +100,7 @@ class CartRepository {
      */
     async getTable(tableId: string) {
         return await makeRequest<void, Cart>({
-            method: 'GET',
+            method: "GET",
             url: `${BASE_URL}/tables/${tableId}?`,
         });
     }

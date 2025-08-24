@@ -1,13 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import type { AddItemToCartDto, Cart, UpdateCartItemDto } from "../models/dtos/cart-dtos";
+import type {
+    AddItemToCartDto,
+    Cart,
+    UpdateCartItemDto,
+} from "../models/dtos/cart-dtos";
 import { cartApi } from "../repositories/cart_repository";
-
 
 // Query Keys
 export const CART_QUERY_KEYS = {
-    cart: (tableId: string) => ['cart', tableId],
-    allCarts: () => ['carts'],
+    cart: (tableId: string) => ["cart", tableId],
+    allCarts: () => ["carts"],
 } as const;
 
 /**
@@ -35,13 +38,16 @@ export const useAddItemToCart = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ tableId, data }: { tableId: string; data: AddItemToCartDto }) =>
-            cartApi.addItemToTable(tableId, data),
+        mutationFn: (
+            { tableId, data }: { tableId: string; data: AddItemToCartDto },
+        ) => cartApi.addItemToTable(tableId, data),
         onSuccess: (response, { tableId }) => {
             // Update the cart data in cache with the response
             queryClient.setQueryData(
                 CART_QUERY_KEYS.cart(tableId),
-                (response && typeof response === 'object' && 'data' in response) ? (response as any).data : response
+                (response && typeof response === "object" && "data" in response)
+                    ? (response as any).data
+                    : response,
             );
             // Also invalidate to ensure fresh data
             queryClient.invalidateQueries({
@@ -49,7 +55,34 @@ export const useAddItemToCart = () => {
             });
         },
         onError: (error) => {
-            console.error('Error adding item to cart:', error);
+            console.error("Error adding item to cart:", error);
+        },
+    });
+};
+
+// checkout
+export const useCheckoutCart = () => {
+    const queryClient = useQueryClient();
+    const navigate = useNavigate();
+    return useMutation({
+        mutationFn: ({ tableId, note, promoCode }: {
+            tableId: string;
+            note?: string;
+            promoCode?: string;
+        }
+        ) => cartApi.checkoutCart(tableId, note, promoCode),
+        onSuccess: (_response, data) => {
+            // Invalidate the cart query to ensure it refetch
+            queryClient.invalidateQueries({
+                queryKey: CART_QUERY_KEYS.cart(data.tableId),
+            });
+            navigate({
+                to: "/tables",
+                replace: true,
+            });
+        },
+        onError: (error) => {
+            console.error("Error during checkout:", error);
         },
     });
 };
@@ -65,13 +98,12 @@ export const useUpdateCartItem = () => {
             optionsHash: string;
             data: UpdateCartItemDto;
             tableId: string;
-        }) =>
-            cartApi.updateCartItem(optionsHash, data, tableId),
+        }) => cartApi.updateCartItem(optionsHash, data, tableId),
         onSuccess: (response, { tableId }) => {
             // Update the cart data in cache with the response
             queryClient.setQueryData(
                 CART_QUERY_KEYS.cart(tableId),
-                response?.data || response
+                response?.data || response,
             );
             // Also invalidate to ensure fresh data
             queryClient.invalidateQueries({
@@ -79,7 +111,7 @@ export const useUpdateCartItem = () => {
             });
         },
         onError: (error) => {
-            console.error('Error updating cart item:', error);
+            console.error("Error updating cart item:", error);
         },
     });
 };
@@ -91,13 +123,14 @@ export const useRemoveCartItem = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ tableId, optionsHash }: { tableId: string; optionsHash: string }) =>
-            cartApi.removeCartItem(tableId, optionsHash),
+        mutationFn: (
+            { tableId, optionsHash }: { tableId: string; optionsHash: string },
+        ) => cartApi.removeCartItem(tableId, optionsHash),
         onSuccess: (response, { tableId }) => {
             // Update the cart data in cache with the response
             queryClient.setQueryData(
                 CART_QUERY_KEYS.cart(tableId),
-                response?.data || response
+                response?.data || response,
             );
             // Also invalidate to ensure fresh data
             queryClient.invalidateQueries({
@@ -105,7 +138,7 @@ export const useRemoveCartItem = () => {
             });
         },
         onError: (error) => {
-            console.error('Error removing cart item:', error);
+            console.error("Error removing cart item:", error);
         },
     });
 };
@@ -126,10 +159,10 @@ export const useClearCart = () => {
             });
             navigate({
                 reloadDocument: true,
-            })
+            });
         },
         onError: (error) => {
-            console.error('Error clearing cart:', error);
+            console.error("Error clearing cart:", error);
         },
     });
 };
@@ -162,7 +195,7 @@ export const useCartOperations = (tableId: string) => {
         clearCart: () => clearCartMutation.mutate(tableId),
 
         getCart: () => {
-            console.log('Refetching cart data... tableId:', tableId);
+            console.log("Refetching cart data... tableId:", tableId);
             return cartQuery.refetch();
         },
 

@@ -221,13 +221,13 @@ const filteredItems = useMemo(() => {
   const incQty = () => setQuantity(prev => prev + 1);
   const decQty = () => setQuantity(prev => Math.max(1, prev - 1));
 
-  const updateCartItemQuantity = (itemId: string, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      removeItem(itemId);
-    } else {
-      updateItem(itemId, { quantity: newQuantity });
-    }
-  };
+const updateCartItemQuantity = (optionsHash: string, newQuantity: number) => {
+  if (newQuantity <= 0) {
+    removeItem(optionsHash); // Use optionsHash instead of itemId
+  } else {
+    updateItem(optionsHash, { quantity: newQuantity });
+  }
+};
 
   if (menuItemsLoading || categoriesLoading) {
     return <Spinner />;
@@ -358,60 +358,60 @@ const filteredItems = useMemo(() => {
             : (
               <div className="space-y-4">
               
-                {cartItems.map((cartItem: CartItem) => (
-                  <Card key={cartItem.menuItem._id} className="border-slate-200">
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-medium">
-                          {cartItem.menuItem.name}
-                        </h4>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            removeItem(cartItem.menuItem._id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-primary">
-                          £{cartItem.totalPrice.toFixed(2)}
-                        </span>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              updateCartItemQuantity(
-                                cartItem.menuItem._id,
-                                cartItem.quantity - 1,
-                              )}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="w-8 text-center">
-                            {cartItem.quantity}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              updateCartItemQuantity(
-                                cartItem.menuItem._id,
-                                cartItem.quantity + 1,
-                              )}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                
+{cartItems.map((cartItem: CartItem) => (
+  <Card key={cartItem.optionsHash} className="border-slate-200"> {/* Use optionsHash as key */}
+    <CardContent className="p-4">
+      <div className="flex justify-between items-start mb-2">
+        <h4 className="font-medium">
+          {cartItem.menuItem.name}
+        </h4>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => removeItem(cartItem.optionsHash)}
+          className="text-destructive hover:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="flex justify-between items-center">
+        <span className="font-bold text-primary">
+          £{cartItem.totalPrice.toFixed(2)}
+        </span>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              updateCartItemQuantity(
+                cartItem.optionsHash,
+                cartItem.quantity - 1,
+              )}
+            className="h-8 w-8 p-0"
+          >
+            <Minus className="h-3 w-3" />
+          </Button>
+          <span className="w-8 text-center">
+            {cartItem.quantity}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              updateCartItemQuantity(
+                cartItem.optionsHash,
+                cartItem.quantity + 1,
+              )}
+            className="h-8 w-8 p-0"
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+))}
               </div>
             )}
         </ScrollArea>

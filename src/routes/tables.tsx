@@ -91,7 +91,7 @@ export default function TableSelection() {
     localStorage.setItem("sidebarSize", size.toString());
   };
 
-  const { cart, getCart, updateItem, removeItem } = useCartOperations(
+  const { cart, getCart } = useCartOperations(
     selectedTable?.id || "",
   );
   const clearCartMutation = useClearCart();

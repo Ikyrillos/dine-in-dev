@@ -63,7 +63,6 @@ export const useAddItemToCart = () => {
 // checkout
 export const useCheckoutCart = () => {
     const queryClient = useQueryClient();
-    const navigate = useNavigate();
     return useMutation({
         mutationFn: ({ tableId, note, promoCode }: {
             tableId: string;

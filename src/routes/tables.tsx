@@ -150,7 +150,7 @@ export default function TableSelection() {
 
   const handleTableClick = (table: Table) => {
     if (table.status === "free") {
-      navigate({ to: "/menu", search: { tableId: table.id } });
+      navigate({ to: "/menu", search: { tableId: table.id, name: table.name } });
     } else {
       setSelectedTable(table);
       setShowPaymentOptions(false);
@@ -159,7 +159,7 @@ export default function TableSelection() {
   };
 
   const handleOrderForTable = (tableId: string) =>
-    navigate({ to: "/menu", search: { tableId } });
+    navigate({ to: "/menu", search: { tableId, name: selectedTable?.name } });
 
   const handlePickupOrder = () =>
     navigate({ to: "/menu", search: { orderType: "pickup" } });

@@ -52,7 +52,7 @@ const CategoryChooserDialog: React.FC<CategoryChooserDialogProps> = ({
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant="outline" className="whitespace-nowrap" disabled={disabled}>
+        <Button variant="outline" className="min-h-12 h-auto rounded-lg p-3" disabled={disabled}>
           <MenuIcon className="h-4 w-4 mr-2" />
           {triggerLabel}
         </Button>

@@ -6,13 +6,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/core/hooks/use-auth"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { AlertCircle, Eye, EyeOff, Store } from "lucide-react"
-import type React from "react"
+import { AlertCircle, Eye, EyeOff } from "lucide-react"
 import { useEffect, useState } from "react"
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute("/")({
   component: SignIn,
-  // Remove beforeLoad entirely
 })
 
 export default function SignIn() {
@@ -23,23 +21,21 @@ export default function SignIn() {
   const navigate = useNavigate()
   const { signIn, isLoading, isAuthenticated } = useAuth()
 
-  // Handle redirect if already authenticated
+  // Redirect if already logged in
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      navigate({ to: '/tables', replace: true })
+      navigate({ to: "/tables", replace: true })
     }
   }, [isLoading, isAuthenticated, navigate])
 
-  // Show loading while auth is initializing
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div>Loading...</div>
       </div>
     )
   }
 
-  // Rest of your component stays the same...
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
@@ -50,39 +46,28 @@ export default function SignIn() {
     }
 
     try {
-      const success = await signIn({
-        username: email,
-        password: password
-      })
-
-      console.log('Sign in result:', success)
-
-      if (success) {
-        // Don't manually navigate here - let the useEffect handle it
-        console.log('Login successful, useEffect will handle navigation')
-      } else {
+      const success = await signIn({ username: email, password })
+      if (!success) {
         setError("Invalid email or password. Please try again.")
       }
     } catch (err) {
-      console.error('Login error:', err)
+      console.error("Login error:", err)
       setError("An error occurred during sign in. Please try again.")
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader className="text-center space-y-4 pb-8">
-          <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center">
-            <Store className="w-8 h-8 text-primary-foreground" />
-          </div>
-          <div>
-            <CardTitle className="text-3xl font-bold text-slate-900 mb-2">Tawila</CardTitle>
-            <p className="text-slate-600">Welcome back to your restaurant</p>
-          </div>
+    <div className="min-h-screen bg-white flex items-center justify-center p-6">
+      <Card className="w-full max-w-md border border-gray-200 shadow-lg rounded-xl">
+        <CardHeader className="text-center pb-6">
+          <CardTitle className="text-3xl font-bold text-primary mb-2">
+            Tawila
+          </CardTitle>
+          <p className="text-gray-600">Sign in to your account</p>
         </CardHeader>
+
         <CardContent>
-          <form onSubmit={handleSignIn} className="space-y-6">
+          <form onSubmit={handleSignIn} className="space-y-4">
             {error && (
               <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg">
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -90,9 +75,12 @@ export default function SignIn() {
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">
-                Email Address
+            <div>
+              <Label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Email
               </Label>
               <Input
                 id="email"
@@ -100,14 +88,17 @@ export default function SignIn() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
-                className="h-12 rounded-xl border-slate-200 focus:border-primary"
+                className="rounded-lg border-gray-200"
                 required
                 disabled={isLoading}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium">
+            <div>
+              <Label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Password
               </Label>
               <div className="relative">
@@ -117,7 +108,7 @@ export default function SignIn() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="h-12 rounded-xl border-slate-200 focus:border-primary pr-12"
+                  className="rounded-lg border-gray-200 pr-12"
                   required
                   disabled={isLoading}
                 />
@@ -129,14 +120,18 @@ export default function SignIn() {
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={isLoading}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
 
             <Button
               type="submit"
-              className="w-full h-12 rounded-xl text-base font-semibold"
+              className="w-full bg-primary hover:bg-primary/90 text-white rounded-lg py-3 text-lg font-semibold mt-6"
               disabled={isLoading}
             >
               {isLoading ? "Signing in..." : "Sign In"}

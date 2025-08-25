@@ -63,10 +63,13 @@ export default function Menu() {
   const [orderType] = useState("pickup");
   const [selectedTable] = useState("");
   const [currentOptionIndex, setCurrentOptionIndex] = useState(0);
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>({});
+  const [selectedOptions, setSelectedOptions] = useState<
+    Record<string, string[]>
+  >({});
 
   // params tableId
   const tableId = new URLSearchParams(window.location.search).get("tableId");
+  const tableName = new URLSearchParams(window.location.search).get("name");
 
   const { data: categories, isLoading: categoriesLoading } =
     useGetMenuCategories();
@@ -82,39 +85,35 @@ export default function Menu() {
   const cartCheckout = useCheckoutCart();
 
   // Computed values using useMemo for performance
-// ✅ robust, headache-free filtering
-const filteredItems = useMemo(() => {
-  const items = menuItems?.data ?? [];
-  if (!items.length) return [];
+  // ✅ robust, headache-free filtering
+  const filteredItems = useMemo(() => {
+    const items = menuItems?.data ?? [];
+    if (!items.length) return [];
 
-  // normalize selected category
-  const selected = selectedCategory?.toString().trim();
-  const hasCategory = !!selected;
+    // normalize selected category
+    const selected = selectedCategory?.toString().trim();
+    const hasCategory = !!selected;
 
-  return items.filter((item: any) => {
-    // --- category match (support multiple common shapes) ---
-    const itemCat =
-      item.categoryId ??
-      item.category?.id ??
-      item.category?._id ??
-      item.category ??
-      item.category_id ??
-      item.categoryID;
+    return items.filter((item: any) => {
+      // --- category match (support multiple common shapes) ---
+      const itemCat = item.categoryId ??
+        item.category?.id ??
+        item.category?._id ??
+        item.category ??
+        item.category_id ??
+        item.categoryID;
 
-    const matchCategory = !hasCategory || String(itemCat) === selected;
+      const matchCategory = !hasCategory || String(itemCat) === selected;
 
-    // --- search match (name / description safe-lowercase) ---
-    const q = (searchQuery || "").trim().toLowerCase();
-    const matchSearch =
-      !q ||
-      (item.name ?? "").toLowerCase().includes(q) ||
-      (item.description ?? "").toLowerCase().includes(q);
+      // --- search match (name / description safe-lowercase) ---
+      const q = (searchQuery || "").trim().toLowerCase();
+      const matchSearch = !q ||
+        (item.name ?? "").toLowerCase().includes(q) ||
+        (item.description ?? "").toLowerCase().includes(q);
 
-    return matchCategory && matchSearch;
-  });
-}, [menuItems?.data, selectedCategory, searchQuery]);
-
-
+      return matchCategory && matchSearch;
+    });
+  }, [menuItems?.data, selectedCategory, searchQuery]);
 
   const cartItems = useMemo(() => {
     return (cart?.items || []) as CartItem[];
@@ -146,13 +145,19 @@ const filteredItems = useMemo(() => {
     resetConfiguration();
   };
 
-  const handleOptionChange = (optionId: string, choiceId: string, isSelected: boolean) => {
-    setSelectedOptions(prev => {
+  const handleOptionChange = (
+    optionId: string,
+    choiceId: string,
+    isSelected: boolean,
+  ) => {
+    setSelectedOptions((prev) => {
       const currentSelections = prev[optionId] || [];
-      
+
       if (isSelected) {
         // For radio type, replace all selections. For checkbox, add to selections
-        const option = selectedItem?.options?.find((opt: any) => opt._id === optionId);
+        const option = selectedItem?.options?.find((opt: any) =>
+          opt._id === optionId
+        );
         if (option?.type === "radio") {
           return { ...prev, [optionId]: [choiceId] };
         } else {
@@ -160,7 +165,10 @@ const filteredItems = useMemo(() => {
         }
       } else {
         // Remove the choice
-        return { ...prev, [optionId]: currentSelections.filter(id => id !== choiceId) };
+        return {
+          ...prev,
+          [optionId]: currentSelections.filter((id) => id !== choiceId),
+        };
       }
     });
   };
@@ -168,7 +176,7 @@ const filteredItems = useMemo(() => {
   const canProceed = () => {
     if (!currentOption) return true;
     if (!currentOption.required) return true;
-    
+
     const optionSelections = selectedOptions[currentOption._id];
     return optionSelections && optionSelections.length > 0;
   };
@@ -191,7 +199,7 @@ const filteredItems = useMemo(() => {
   };
 
   const nextStep = () => {
-    setCurrentOptionIndex(prev => prev + 1);
+    setCurrentOptionIndex((prev) => prev + 1);
   };
 
   const nextOrAddToCart = () => {
@@ -199,7 +207,9 @@ const filteredItems = useMemo(() => {
 
     if (isLastStep || selectedItem.options.length === 0) {
       // Add to cart
-      const cartItemOptions = Object.entries(selectedOptions).map(([optionId, choiceIds]) => ({
+      const cartItemOptions = Object.entries(selectedOptions).map((
+        [optionId, choiceIds],
+      ) => ({
         optionId,
         choiceIds: Array.isArray(choiceIds) ? choiceIds : [choiceIds],
       }));
@@ -218,16 +228,16 @@ const filteredItems = useMemo(() => {
     }
   };
 
-  const incQty = () => setQuantity(prev => prev + 1);
-  const decQty = () => setQuantity(prev => Math.max(1, prev - 1));
+  const incQty = () => setQuantity((prev) => prev + 1);
+  const decQty = () => setQuantity((prev) => Math.max(1, prev - 1));
 
-const updateCartItemQuantity = (optionsHash: string, newQuantity: number) => {
-  if (newQuantity <= 0) {
-    removeItem(optionsHash); // Use optionsHash instead of itemId
-  } else {
-    updateItem(optionsHash, { quantity: newQuantity });
-  }
-};
+  const updateCartItemQuantity = (optionsHash: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      removeItem(optionsHash); // Use optionsHash instead of itemId
+    } else {
+      updateItem(optionsHash, { quantity: newQuantity });
+    }
+  };
 
   if (menuItemsLoading || categoriesLoading) {
     return <Spinner />;
@@ -261,7 +271,7 @@ const updateCartItemQuantity = (optionsHash: string, newQuantity: number) => {
 
           <div className="text-right">
             <p className="text-sm text-muted-foreground">
-              {orderType === "pickup" ? "Pickup Order" : ``}
+              {tableName ? tableName.replaceAll('"', "") : "Pickup Order"}
             </p>
           </div>
         </div>
@@ -279,16 +289,16 @@ const updateCartItemQuantity = (optionsHash: string, newQuantity: number) => {
                 ? "Change Category"
                 : "Choose Category"}
             />
-            {categories?.data.map((category) => (
+            {categories?.data.slice(0, 9).map((category) => (
               <Button
                 key={category.id}
                 variant={String(selectedCategory) === String(category.id)
                   ? "default"
                   : "outline"}
                 onClick={() => setSelectedCategory(String(category.id))}
-                className="whitespace-nowrap"
+                className="min-h-12 h-auto rounded-lg p-3"
               >
-                {category.name}
+                <span className="break-words text-left">{category.name}</span>
               </Button>
             ))}
           </div>
@@ -297,34 +307,36 @@ const updateCartItemQuantity = (optionsHash: string, newQuantity: number) => {
 
       {/* Menu Items */}
       <div className="flex-1 overflow-hidden">
-        <div className="h-full overflow-y-auto p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="h-full overflow-y-auto p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredItems.map((item) => (
-              <div
+              <Card
                 key={item._id}
-                className="flex items-center justify-between p-2 mb-2 border border-gray-200 rounded-lg cursor-pointer hover:shadow-md hover:bg-gray-50 transition-all"
+                className={`cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02] rounded-xl overflow-hidden h-auto ${
+                  selectedItem?._id === item._id
+                    ? "border-primary border-4"
+                    : "border-gray-200"
+                }`}
                 onClick={() => startConfigForItem(item)}
-                role="button"
               >
-                <div className="flex items-center min-w-0">
-                  <div className="relative flex-shrink-0 w-20 h-20 overflow-hidden rounded-md ring-1 ring-gray-200">
+                <CardContent className=" h-full">
+                  <div className="flex items-start space-x-3 h-full">
                     <img
                       src={item.photoUrl || "/placeholder.png"}
                       alt={item.name}
-                      className="w-full h-full object-cover"
+                      className="w-12 h-12 rounded-lg object-cover flex-shrink-0 border border-gray-100"
                     />
+                    <div className="flex-1 min-w-0 flex flex-col justify-between">
+                      <h3 className="font-semibold text-gray-900 text-base leading-tight break-words">
+                        {item.name}
+                      </h3>
+                      <p className="text-lg font-bold text-primary mt-2">
+                        £{item.price.toFixed(2)}
+                      </p>
+                    </div>
                   </div>
-                  <h3 className="ml-4 font-semibold text-base md:text-md mx-2">
-                    {item.name}
-                  </h3>
-                </div>
-
-                <div className="flex-shrink-0">
-                  <span className="inline-block px-2 py-2 border rounded-md bg-white text-sm md:text-base text-black">
-                    £{item.price.toFixed(2)}
-                  </span>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
@@ -357,61 +369,61 @@ const updateCartItemQuantity = (optionsHash: string, newQuantity: number) => {
             )
             : (
               <div className="space-y-4">
-              
-                
-{cartItems.map((cartItem: CartItem) => (
-  <Card key={cartItem.optionsHash} className="border-slate-200"> {/* Use optionsHash as key */}
-    <CardContent className="p-4">
-      <div className="flex justify-between items-start mb-2">
-        <h4 className="font-medium">
-          {cartItem.menuItem.name}
-        </h4>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => removeItem(cartItem.optionsHash)}
-          className="text-destructive hover:text-destructive"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-      <div className="flex justify-between items-center">
-        <span className="font-bold text-primary">
-          £{cartItem.totalPrice.toFixed(2)}
-        </span>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              updateCartItemQuantity(
-                cartItem.optionsHash,
-                cartItem.quantity - 1,
-              )}
-            className="h-8 w-8 p-0"
-          >
-            <Minus className="h-3 w-3" />
-          </Button>
-          <span className="w-8 text-center">
-            {cartItem.quantity}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              updateCartItemQuantity(
-                cartItem.optionsHash,
-                cartItem.quantity + 1,
-              )}
-            className="h-8 w-8 p-0"
-          >
-            <Plus className="h-3 w-3" />
-          </Button>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-))}
+                {cartItems.map((cartItem: CartItem) => (
+                  <Card key={cartItem.optionsHash} className="border-slate-200">
+                    {/* Use optionsHash as key */}
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-medium">
+                          {cartItem.menuItem.name}
+                        </h4>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            removeItem(cartItem.optionsHash)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-primary">
+                          £{cartItem.totalPrice.toFixed(2)}
+                        </span>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              updateCartItemQuantity(
+                                cartItem.optionsHash,
+                                cartItem.quantity - 1,
+                              )}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-8 text-center">
+                            {cartItem.quantity}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              updateCartItemQuantity(
+                                cartItem.optionsHash,
+                                cartItem.quantity + 1,
+                              )}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             )}
         </ScrollArea>
@@ -498,7 +510,8 @@ const updateCartItemQuantity = (optionsHash: string, newQuantity: number) => {
                           )}
                         </h3>
                         <Badge variant="outline">
-                          {currentOptionIndex + 1} of {selectedItem.options.length}
+                          {currentOptionIndex + 1} of{" "}
+                          {selectedItem.options.length}
                         </Badge>
                       </div>
 
@@ -508,7 +521,8 @@ const updateCartItemQuantity = (optionsHash: string, newQuantity: number) => {
                           {currentOption?.type === "radio"
                             ? (
                               <RadioGroup
-                                value={selectedOptions[currentOption._id]?.[0] || ""}
+                                value={selectedOptions[currentOption._id]
+                                  ?.[0] || ""}
                                 onValueChange={(value) =>
                                   handleOptionChange(
                                     currentOption._id,
@@ -545,9 +559,11 @@ const updateCartItemQuantity = (optionsHash: string, newQuantity: number) => {
                             : (
                               <div className="space-y-3">
                                 {currentOption?.choices?.map((choice) => {
-                                  const isSelected = selectedOptions[currentOption._id]?.includes(
-                                    choice._id,
-                                  ) || false;
+                                  const isSelected =
+                                    selectedOptions[currentOption._id]
+                                      ?.includes(
+                                        choice._id,
+                                      ) || false;
                                   return (
                                     <div
                                       key={choice._id}
@@ -568,9 +584,9 @@ const updateCartItemQuantity = (optionsHash: string, newQuantity: number) => {
                                         className="flex-1 cursor-pointer"
                                       >
                                         <div className="flex justify-between items-center w-full">
-                                          <span
-                                            className="w-72"
-                                          >{choice.name}</span>
+                                          <span className="w-72">
+                                            {choice.name}
+                                          </span>
                                           {choice.price > 0 && (
                                             <span className="text-primary font-medium">
                                               £{choice.price.toFixed(2)}

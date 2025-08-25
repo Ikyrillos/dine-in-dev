@@ -76,10 +76,6 @@ export const useCheckoutCart = () => {
             queryClient.invalidateQueries({
                 queryKey: CART_QUERY_KEYS.cart(data.tableId),
             });
-            navigate({
-                to: "/tables",
-                replace: true,
-            });
         },
         onError: (error) => {
             console.error("Error during checkout:", error);

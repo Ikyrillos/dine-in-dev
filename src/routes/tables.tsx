@@ -1,18 +1,12 @@
 "use client";
 
-import { ResizableLayout } from "@/components/resizable-layout";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,36 +15,39 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { useCartOperations, useCheckoutCart, useClearCart } from "@/core/hooks/cart_hooks";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+
+import {
+  useCartOperations,
+  useCheckoutCart,
+  useClearCart,
+} from "@/core/hooks/cart_hooks";
 import { useAuth } from "@/core/hooks/use-auth";
 import { useGetRestaurantById } from "@/core/hooks/use-restaurant-hooks";
 import { useGetTables } from "@/core/hooks/use-tables-hooks";
 import type { Table } from "@/core/models/TableModel";
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+
 import {
+  ArrowLeft,
+  Banknote,
   Check,
-  Minus,
-  Plus,
-  ShoppingBag,
-  Trash2,
-  Users
+  CreditCard
 } from "lucide-react";
-import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/tables")({
   component: TableSelection,
-  beforeLoad: ({ context }: {
-    context: any;
-  }) => {
+  beforeLoad: ({ context }: { context: any }) => {
     if (!context.auth.isAuthenticated) {
       throw redirect({
         to: "/",
-        search: {
-          redirect: "/tables",
-        },
+        search: { redirect: "/tables" },
       });
     }
   },
@@ -59,10 +56,9 @@ export const Route = createFileRoute("/tables")({
 export default function TableSelection() {
   const auth = useAuth();
   const navigate = useNavigate();
-  const {
-    data: restaurant,
-    isLoading: isRestaurantLoading,
-  } = useGetRestaurantById();
+
+  const { data: restaurant, isLoading: isRestaurantLoading } =
+    useGetRestaurantById();
 
   useEffect(() => {
     if (restaurant?.data) {
@@ -76,61 +72,58 @@ export default function TableSelection() {
     refetch: refetchTables,
   } = useGetTables();
 
-  // Local state with hooks
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
-  const [showConfirmOrderDialog, setShowConfirmOrderDialog] = useState(false);
+  const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [orderNotes, setOrderNotes] = useState("");
   const [restaurantData, setRestaurantData] = useState<any>(null);
-  const [defaultTabValue, setDefaultTabValue] = useState<string>("dine-in");
 
-  const {
-    cart,
-    getCart,
-    updateItem,
-    removeItem,
-  } = useCartOperations(selectedTable?.id || "");
+  // toggle state (tab look)
+  const [mode, setMode] = useState<"dine-in" | "pickup">("dine-in");
 
+  // sidebar size persist (like your source styling)
+  const getSidebarSize = () => {
+    const saved = localStorage.getItem("sidebarSize");
+    return saved ? parseInt(saved) : 28; // slightly wider to match screenshot
+  };
+  const [sidebarSize, setSidebarSize] = useState<number>(getSidebarSize());
+  const handleSidebarResize = (size: number) => {
+    setSidebarSize(size);
+    localStorage.setItem("sidebarSize", size.toString());
+  };
+
+  const { cart, getCart, updateItem, removeItem } = useCartOperations(
+    selectedTable?.id || "",
+  );
   const clearCartMutation = useClearCart();
   const cartCheckout = useCheckoutCart();
 
-  // Store restaurant data in local state instead of localStorage for better React patterns
   useEffect(() => {
     if (restaurant?.data) {
       setRestaurantData(restaurant.data);
-      // Only use localStorage for persistence if absolutely necessary
-      // Consider using a more React-friendly approach like context or props
       refetchTables();
     }
   }, [restaurant?.data, refetchTables]);
 
-  // Update default tab based on restaurant settings
   useEffect(() => {
-    if (restaurantData) {
-      // If dine-in is disabled but pickup is enabled, default to pickup
-      if (!restaurantData.hasDineIn && restaurantData.hasPickup) {
-        setDefaultTabValue("pickup");
-      }
-      // If pickup is disabled but dine-in is enabled, default to dine-in
-      else if (restaurantData.hasDineIn && !restaurantData.hasPickup) {
-        setDefaultTabValue("dine-in");
-      }
-      // If both are enabled, default to dine-in
-      else if (restaurantData.hasDineIn && restaurantData.hasPickup) {
-        setDefaultTabValue("dine-in");
-      }
+    if (!restaurantData) return;
+    if (!restaurantData.hasDineIn && restaurantData.hasPickup) {
+      setMode("pickup");
+    } else {
+      setMode("dine-in");
     }
   }, [restaurantData]);
 
-  const getTableVariant = (status: string) => {
+  // EXACT tile colors per screenshot
+  const getTableColor = (status: string) => {
     switch (status) {
       case "occupied":
-        return "bg-primary text-primary-foreground hover:bg-primary/90";
-      case "empty":
-        return "bg-background border-2 border-dashed border-muted-foreground/25 hover:border-primary hover:bg-primary/5";
+        return "bg-primary hover:bg-primary/90 text-white";
+      case "free":
+        return "bg-white text-[#010101] border-2 border-[#010101] hover:bg-primary/5";
       case "reserved":
-        return "bg-amber-100 text-amber-900 border border-amber-200 hover:bg-amber-200";
+        return "bg-[#d9d9d9] text-[#010101] hover:bg-[#d9d9d9]/90";
       default:
-        return "bg-muted hover:bg-muted/80";
+        return "bg-[#d9d9d9] text-[#010101]";
     }
   };
 
@@ -142,7 +135,7 @@ export default function TableSelection() {
             Active
           </Badge>
         );
-      case "empty":
+      case "free":
         return <Badge variant="outline">Available</Badge>;
       case "reserved":
         return (
@@ -157,56 +150,38 @@ export default function TableSelection() {
 
   const handleTableClick = (table: Table) => {
     if (table.status === "free") {
-      // Store table selection in component state or pass via navigation
-      navigate({
-        to: "/menu",
-        search: {
-          tableId: table.id,
-        },
-      });
+      navigate({ to: "/menu", search: { tableId: table.id } });
     } else {
       setSelectedTable(table);
+      setShowPaymentOptions(false);
     }
-
     getCart();
   };
 
-  const handleOrderForTable = (tableId: string) => {
-    navigate({
-      to: "/menu",
-      search: {
-        tableId: tableId,
-      },
-    });
-  };
+  const handleOrderForTable = (tableId: string) =>
+    navigate({ to: "/menu", search: { tableId } });
 
-  const handlePickupOrder = () => {
-    navigate({
-      to: "/menu",
-      search: {
-        orderType: "pickup",
-      },
-    });
-  };
+  const handlePickupOrder = () =>
+    navigate({ to: "/menu", search: { orderType: "pickup" } });
 
-  const updateCartItemQuantity = (lineId: string, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      removeItem(lineId); // lineId = optionsHash
-    } else {
-      updateItem(lineId, { quantity: newQuantity });
+  const handlePaymentMethodSelect = (method: string) => {
+    if (method === "cash") {
+      // Process cash payment
+      handleConfirmOrder();
+    } else if (method === "card") {
+      alert("Card payment not implemented yet");
     }
   };
 
   const handleConfirmOrder = () => {
     if (!selectedTable) return;
-    
-    cartCheckout.mutate({ 
-      tableId: selectedTable.id, 
-      note: orderNotes 
-    });
-    
-    setShowConfirmOrderDialog(false);
+    cartCheckout.mutate({ tableId: selectedTable.id, note: orderNotes });
+    setShowPaymentOptions(false);
     setOrderNotes("");
+    setTimeout(() => {
+      getCart();
+      refetchTables();
+    }, 1000);
   };
 
   const totalAmount = cart?.totalAmount || 0;
@@ -215,396 +190,294 @@ export default function TableSelection() {
   if (isRestaurantLoading || isTablesLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-lg text-muted-foreground">
-          Loading restaurant data...
-        </p>
+        <p className="text-lg text-muted-foreground">Loading restaurant data...</p>
       </div>
     );
   }
 
-  // If both services are disabled, show a message
-  const renderServiceUnavailable = () => {
-    if (!restaurantData?.hasDineIn && !restaurantData?.hasPickup) {
-      return (
-        <div className="flex-1 p-6">
-          <Card className="text-center max-w-md mx-auto">
-            <CardContent className="p-8">
-              <h2 className="text-2xl font-bold mb-2">Service Unavailable</h2>
-              <p className="text-muted-foreground">
-                Both dine-in and pickup services are currently unavailable.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  const mainContent = (
-    <>
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="relative h-12 w-12 rounded-full"
-                >
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={restaurantData?.logo} alt="Profile" />
-                    <AvatarFallback className="bg-transparent text-primary-foreground">
-                      <img src={"/placeholder.svg"} alt="Logo" />
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="start">
-                <div className="flex items-center justify-start gap-2 p-2">
-                  <div className="flex flex-col space-y-1 leading-none">
-                    <p className="font-medium">
-                      {auth.user?.firstName + " " + auth.user?.lastName}
-                    </p>
-                  </div>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    auth.signOut();
-                    navigate({ to: "/" });
-                  }}
-                >
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">
-                {restaurantData?.name}
-              </h1>
-              <p className="text-sm text-slate-600">Restaurant Management</p>
+  return (
+    <div className="min-h-screen bg-white">
+      <ResizablePanelGroup direction="horizontal" className="min-h-screen">
+        {/* MAIN */}
+        <ResizablePanel defaultSize={100 - sidebarSize} minSize={60} maxSize={85}>
+          {/* HEADER (exact look) */}
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between max-w-7xl mx-auto">
+              <div className="flex items-center space-x-4">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-12 w-12 rounded-full p-0">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={restaurantData?.logo} alt="Profile" />
+                        <AvatarFallback className="bg-slate-100" />
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
+                    <div className="px-2 py-1.5">
+                      <div className="font-medium">
+                        {auth.user?.firstName} {auth.user?.lastName}
+                      </div>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        auth.signOut();
+                        navigate({ to: "/" });
+                      }}
+                    >
+                      Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <h1 className="text-3xl font-bold text-primary">Tawila</h1>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
 
-      {/* Content */}
-      {renderServiceUnavailable() || (
-        <div className="flex-1 p-6">
-          <Tabs value={defaultTabValue} onValueChange={setDefaultTabValue} className="w-full">
-            <TabsList className="grid w-full max-w-md grid-cols-2 mb-8">
-              <TabsTrigger 
-                value="dine-in" 
-                className="text-base"
-                disabled={!restaurantData?.hasDineIn}
+          {/* CONTENT */}
+          <div className="p-6">
+            <div className="max-w-7xl mx-auto">
+              {/* PILL TOGGLE exactly like screenshot */}
+              <ToggleGroup
+                type="single"
+                value={mode}
+                onValueChange={(v) => {
+                  if (!v) return;
+                  if (v === "dine-in" && !restaurantData?.hasDineIn) return;
+                  if (v === "pickup" && !restaurantData?.hasPickup) return;
+                  setMode(v as "dine-in" | "pickup");
+                }}
+                className="grid w-full grid-cols-2 rounded-xl bg-slate-100 p-2"
               >
-                <Users className="w-4 h-4 mr-2" />
-                Dine-in
-                {!restaurantData?.hasDineIn && (
-                  <span className="ml-1 text-xs opacity-60">(Unavailable)</span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger 
-                value="pickup" 
-                className="text-base"
-                disabled={!restaurantData?.hasPickup}
-              >
-                <ShoppingBag className="w-4 h-4 mr-2" />
-                Pickup
-                {!restaurantData?.hasPickup && (
-                  <span className="ml-1 text-xs opacity-60">(Unavailable)</span>
-                )}
-              </TabsTrigger>
-            </TabsList>
+                <ToggleGroupItem
+                  value="dine-in"
+                  disabled={!restaurantData?.hasDineIn}
+                  className="rounded-lg h-12 text-base data-[state=on]:bg-white data-[state=on]:shadow-sm"
+                >
+                  Dine-in
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="pickup"
+                  disabled={!restaurantData?.hasPickup}
+                  className="rounded-lg h-12 text-base data-[state=on]:bg-white data-[state=on]:shadow-sm"
+                >
+                  Pickup
+                </ToggleGroupItem>
+              </ToggleGroup>
 
-            {restaurantData?.hasDineIn && (
-              <TabsContent value="dine-in" className="space-y-6">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                  {tables?.data.map((table) => (
-                    <Card
-                      key={table.id}
-                      className={`
-                        cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg
-                        ${getTableVariant(table.status)}
-                        ${
-                        selectedTable?.id === table.id
-                          ? "ring-2 ring-primary ring-offset-2"
-                          : ""
-                      }
-                      `}
-                      onClick={() => handleTableClick(table)}
-                    >
-                      <CardContent className="p-6 text-center">
-                        <div className="space-y-3">
-                          <h3 className="text-xl font-semibold">{table.name}</h3>
-                          {getStatusBadge(table.status)}
-                          {table.status !== "occupied" && (
-                            <p className="text-sm opacity-90">
-                              {table.status === "free" && "Available"}
-                              {table.status !== "free" && "Reserved"}
-                            </p>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+              {/* GRID like screenshot: big squares, generous gap */}
+              {mode === "dine-in" && restaurantData?.hasDineIn && (
+                <div className="pt-6">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                    {tables?.data?.map((table) => (
+                      <Card
+                        key={table.id}
+                        onClick={() => handleTableClick(table)}
+                        className={`cursor-pointer rounded-2xl overflow-hidden h-36 flex ${getTableColor(
+                          table.status,
+                        )} items-center justify-center transition-colors`}
+                      >
+                        <CardContent className="p-0 text-center w-full h-full flex items-center justify-center">
+                          <h3 className="text-lg md:text-xl font-normal">
+                            {table.name}
+                          </h3>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
-              </TabsContent>
-            )}
+              )}
 
-            {restaurantData?.hasPickup && (
-              <TabsContent value="pickup" className="space-y-6">
-                <div className="max-w-md mx-auto">
-                  <Card className="text-center">
-                    <CardContent className="p-8">
-                      <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-primary" />
-                      <h2 className="text-2xl font-bold mb-2">Pickup Order</h2>
-                      <p className="text-muted-foreground mb-6">
-                        Start a new pickup order and go straight to the menu.
+              {mode === "pickup" && restaurantData?.hasPickup && (
+                <div className="pt-6">
+                  <div className="text-center py-10">
+                    <div className="max-w-md mx-auto bg-gray-50 p-8 rounded-xl shadow-sm">
+                      <h2 className="text-3xl font-bold text-gray-900 mb-4">Pickup Order</h2>
+                      <p className="text-gray-600 mb-8">
+                        Ready to order for pickup? Click below to go straight to the menu.
                       </p>
                       <Button
                         onClick={handlePickupOrder}
-                        size="lg"
-                        className="w-full"
+                        className="w-full bg-primary hover:bg-primary/90 text-white h-14 text-lg font-semibold rounded-lg"
                       >
                         Start Pickup Order
                       </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-            )}
-          </Tabs>
-        </div>
-      )}
-    </>
-  );
-
-  const sidebarContent = selectedTable
-    ? (
-      <>
-        {/* Table Header */}
-        <div className="p-6 border-b border-slate-200">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xl font-bold">{selectedTable.name}</h2>
-            {getStatusBadge(selectedTable.status)}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {selectedTable.status === "occupied" &&
-              "Currently serving customers"}
-            {selectedTable.status === "reserved" &&
-              "Reserved for upcoming guests"}
-          </p>
-        </div>
-
-        {/* Content */}
-        <ScrollArea className="flex-1">
-          <div className="p-6">
-            {/* Clear button */}
-            {selectedTable.status === "occupied" && (
-              (cart?.items?.length ?? 0) > 0
-                ? (
-                  <Button
-                    variant="outline"
-                    className="mb-4 w-full"
-                    onClick={() => {
-                      if (
-                        confirm("Are you sure you want to clear this table?")
-                      ) {
-                        clearCartMutation.mutate(
-                          selectedTable.id,
-                        );
-                      }
-                    }}
-                  >
-                    Clear Table
-                  </Button>
-                )
-                : null
-            )}
-
-            {/* Cart Items */}
-            <div className="space-y-6">
-              {cartItems?.map((cartItem) => (
-                <Card
-                  key={cartItem.optionsHash}
-                  className="border-slate-200"
-                >
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-medium">
-                        {cartItem.menuItem?.name ?? "Item"}
-                      </h4>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeItem(cartItem.optionsHash)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </ResizablePanel>
 
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-primary">
-                        £{Number(cartItem.totalPrice).toFixed(2)}
-                      </span>
+        {/* HANDLE */}
+        <ResizableHandle
+          withHandle
+          className="w-3 bg-border hover:bg-primary/20 active:bg-primary/30 transition-colors cursor-col-resize"
+        />
 
-                      <div className="flex items-center space-x-2">
+        {/* SIDEBAR (title + helper text, same tone) */}
+        <ResizablePanel
+          defaultSize={sidebarSize}
+          minSize={15}
+          maxSize={40}
+          onResize={handleSidebarResize}
+        >
+          <div
+            className="h-full bg-white border-l border-gray-200 shadow-lg"
+            style={{ width: `${sidebarSize}vw` }}
+          >
+            {selectedTable ? (
+              <div className="h-full flex flex-col">
+                <div className="p-6 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-gray-900">{selectedTable.name}</h2>
+                    {getStatusBadge(selectedTable.status)}
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1 capitalize">{selectedTable.status}</p>
+                </div>
+
+                <ScrollArea className="flex-1">
+                  <div className="p-6">
+                    {selectedTable.status === "occupied" && (cartItems?.length ?? 0) > 0 && (
+                      <Button
+                        variant="outline"
+                        className="mb-4 w-full"
+                        onClick={() => {
+                          if (confirm("Are you sure you want to clear this table?")) {
+                            clearCartMutation.mutate(selectedTable.id);
+                          }
+                        }}
+                      >
+                        Clear Table
+                      </Button>
+                    )}
+
+                    {showPaymentOptions ? (
+                      <div>
                         <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            updateCartItemQuantity(
-                              cartItem.optionsHash,
-                              cartItem.quantity - 1,
-                            )}
-                          className="h-8 w-8 p-0"
+                          variant="ghost"
+                          className="w-full justify-start h-12"
+                          onClick={() => setShowPaymentOptions(false)}
                         >
-                          <Minus className="h-3 w-3" />
+                          <ArrowLeft className="mr-2 h-4 w-4" />
+                          Back
                         </Button>
+                        <h3 className="font-semibold text-gray-900 text-lg my-4 text-center">
+                          Payment
+                        </h3>
+                        
+                        {/* Order Notes Section */}
+                        <div className="mb-6">
+                          <Label htmlFor="orderNotes" className="text-sm font-medium">
+                            Special Instructions
+                          </Label>
+                          <Textarea
+                            id="orderNotes"
+                            placeholder="Any special requests..."
+                            value={orderNotes}
+                            onChange={(e) => setOrderNotes(e.target.value)}
+                            className="mt-2"
+                            rows={3}
+                          />
+                        </div>
 
-                        <span className="w-8 text-center">
-                          {cartItem.quantity}
+                        {/* Payment Method Buttons */}
+                        <div className="space-y-3">
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start h-14 text-base font-medium"
+                            onClick={() => handlePaymentMethodSelect("card")}
+                          >
+                            <CreditCard className="mr-3 h-5 w-5" />
+                            Card
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start h-14 text-base font-medium"
+                            onClick={() => handlePaymentMethodSelect("cash")}
+                          >
+                            <Banknote className="mr-3 h-5 w-5" />
+                            Cash
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="">
+                        {cartItems.map((cartItem) => (
+                          <Card key={cartItem.optionsHash} className="border border-gray-200 mb-3">
+                            <CardContent className="p-3">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="font-medium text-sm">
+                                    {cartItem.menuItem?.name ?? "Item"}
+                                  </p>
+                                  <p className="text-xs text-gray-500">Qty: {cartItem.quantity}</p>
+                                </div>
+                                <div className="flex items-center">
+                                  <span className="font-bold text-primary">
+                                    £{Number(cartItem.totalPrice).toFixed(2)}
+                                  </span>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+
+                <div className="border-t border-gray-200">
+                  {(selectedTable.status === "reserved" ||
+                    (selectedTable.status === "occupied" && cartItems.length > 0)) && (
+                    <div className="p-6 border-b border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold text-gray-900">Total</span>
+                        <span className="text-xl font-bold text-primary">
+                          £{totalAmount.toFixed(2)}
                         </span>
-
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            updateCartItemQuantity(
-                              cartItem.optionsHash,
-                              cartItem.quantity + 1,
-                            )}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </ScrollArea>
+                  )}
 
-        {/* Footer */}
-        <div className="border-t border-slate-200 p-6">
-          <div className="space-y-3">
-            <Button
-              onClick={() => handleOrderForTable(selectedTable.id)}
-              className="w-full"
-              size="lg"
-            >
-              {selectedTable.status === "occupied"
-                ? "Add More Items"
-                : "Start Order"}
-            </Button>
-            {(selectedTable.status === "occupied" ||
-              selectedTable.status === "reserved") && cartItems.length > 0 && (
-              <Button
-                onClick={() => setShowConfirmOrderDialog(true)}
-                variant="outline"
-                className="w-full"
-                size="lg"
-              >
-                <Check className="w-4 h-4 mr-2" />
-                Confirm Order
-              </Button>
+                  {!showPaymentOptions && (
+                    <div className="p-6 space-y-3">
+                      {selectedTable.status !== "reserved" && (
+                        <Button
+                          onClick={() => handleOrderForTable(selectedTable.id)}
+                          className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl h-14 text-lg font-semibold"
+                        >
+                          {selectedTable.status === "occupied" ? "Order more for" : "Order for"}{" "}
+                          {selectedTable.name}
+                        </Button>
+                      )}
+
+                      {(selectedTable.status === "occupied" || selectedTable.status === "reserved") &&
+                        cartItems.length > 0 && (
+                          <Button
+                            onClick={() => setShowPaymentOptions(true)}
+                            variant="outline"
+                            className="w-full border-primary text-primary hover:bg-primary hover:text-white rounded-xl h-14 text-lg font-semibold"
+                          >
+                            <Check className="w-4 h-4 mr-2" />
+                            Confirm Order
+                          </Button>
+                        )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Table Details</h2>
+                <p className="text-gray-500">Select a table to view details</p>
+              </div>
             )}
           </div>
-        </div>
-      </>
-    )
-    : (
-      <div className="p-6">
-        <div className="text-center text-muted-foreground">
-          <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <h3 className="font-medium mb-2">Select a Table</h3>
-          <p className="text-sm">
-            Choose a table to view details and manage orders
-          </p>
-        </div>
-      </div>
-    );
-
-  return (
-    <div className="min-h-screen bg-slate-50">
-      <ResizableLayout sidebar={sidebarContent}>{mainContent}</ResizableLayout>
-
-      {/* Confirm Order Dialog */}
-      <Dialog open={showConfirmOrderDialog} onOpenChange={setShowConfirmOrderDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Confirm Order</DialogTitle>
-            <DialogDescription>
-              Table {selectedTable?.name}
-            </DialogDescription>
-          </DialogHeader>
-
-          <ScrollArea className="max-h-96">
-            <div className="space-y-4">
-              {cartItems.map((cartItem) => (
-                <div
-                  key={cartItem.optionsHash}
-                  className="flex justify-between items-center p-3 bg-slate-50 rounded-lg"
-                >
-                  <div>
-                    <p className="font-medium">{cartItem.menuItem?.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Qty: {cartItem.quantity}
-                    </p>
-                  </div>
-                  <p className="font-bold text-primary">
-                    £{Number(cartItem.totalPrice).toFixed(2)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-
-          {/* Order Notes Section */}
-          <div className="mt-4">
-            <Label htmlFor="orderNotes" className="text-sm font-medium">Special Instructions</Label>
-            <Textarea
-              id="orderNotes"
-              placeholder="Any special requests..."
-              value={orderNotes}
-              onChange={(e) => setOrderNotes(e.target.value)}
-              className="mt-2"
-              rows={3}
-            />
-          </div>
-
-          <div className="flex justify-between items-center pt-4 border-t">
-            <span className="text-lg font-semibold">Total</span>
-            <span className="text-xl font-bold text-primary">
-              £{totalAmount.toFixed(2)}
-            </span>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowConfirmOrderDialog(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleConfirmOrder}
-              disabled={cartCheckout.isPending}
-            >
-              <Check className="w-4 h-4 mr-2" />
-              {cartCheckout.isPending ? "Confirming..." : "Confirm Order"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }

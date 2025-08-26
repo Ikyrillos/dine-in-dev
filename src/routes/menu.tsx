@@ -344,44 +344,180 @@ export default function Menu() {
     </div>
   );
 
-  const sidebarContent = (
-    <div className="flex flex-col h-full">
-      {/* Header - Fixed */}
-      <div className="p-6 border-b border-slate-200 flex-shrink-0">
-        <div className="flex items-center justify-between">
+ const sidebarContent = (
+  <div className="flex h-full flex-col bg-white">
+    {/* top header: "Your Order" -> per mock, we show the item flow header instead */}
+    <div className="flex items-center justify-between px-6 py-4 border-b">
+      {selectedItem ? (
+        <div className="text-sm text-muted-foreground">
+          {currentOption ? `${currentOptionIndex + 1} of ${selectedItem.options.length}` : ""}
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
           <h2 className="text-xl font-bold">Your Order</h2>
           <Badge variant="secondary">
             {cartItems.length} item{cartItems.length !== 1 ? "s" : ""}
           </Badge>
         </div>
-      </div>
+      )}
+    </div>
 
-      {/* Scrollable Cart Items Section */}
-      <div className="flex-1 overflow-hidden">
-        <ScrollArea className="h-full p-6">
-          {cartItems.length === 0
-            ? (
+    {/* BODY */}
+    <div className="flex-1 overflow-hidden">
+      <ScrollArea className="h-full">
+        {/* CONFIG VIEW (matches screenshots) */}
+        {selectedItem && (
+          <div className="px-6 pb-32"> {/* bottom padding so content clears sticky footer */}
+            {/* big image + title/desc */}
+            <div className="pt-6 flex flex-col items-center">
+              <div className="w-28 h-28 rounded-xl bg-gray-100 overflow-hidden mb-4">
+                <img
+                  src={selectedItem.photoUrl || "/placeholder.png"}
+                  alt={selectedItem.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+
+              <h2 className="text-2xl font-extrabold tracking-tight text-gray-900 text-center">
+                {selectedItem.name}
+              </h2>
+              {selectedItem.description && (
+                <p className="mt-2 text-sm text-gray-600 text-center max-w-[36ch]">
+                  {selectedItem.description}
+                </p>
+              )}
+            </div>
+
+            {/* OPTION GROUP (STEP) */}
+            {selectedItem.options.length > 0 && currentOption && (
+              <div className="mt-8">
+                <p className="text-2xl font-bold">{
+                  // “Size *” like pic 1
+                  <>
+                    {currentOption.name}{" "}
+                    {currentOption.required && <span className="text-destructive">*</span>}
+                  </>
+                }</p>
+
+                {/* choices list */}
+                <div className="mt-4 space-y-3">
+                  {currentOption.type === "radio" ? (
+                    <RadioGroup
+                      value={selectedOptions[currentOption._id]?.[0] || ""}
+                      onValueChange={(value) => handleOptionChange(currentOption._id, value, true)}
+                    >
+                      {currentOption.choices?.map((choice: any) => (
+                        <label
+                          key={choice._id}
+                          htmlFor={choice._id}
+                          className={`
+                            flex items-center justify-between rounded-xl border px-4 py-5 cursor-pointer
+                            ${selectedOptions[currentOption._id]?.[0] === choice._id
+                              ? "border-primary ring-2 ring-primary/30"
+                              : "border-slate-200 hover:border-slate-300"}
+                          `}
+                        >
+                          <div className="flex items-center gap-3">
+                            <RadioGroupItem id={choice._id} value={choice._id} />
+                            <span className="text-base">{choice.name}</span>
+                          </div>
+                          {choice.price > 0 && (
+                            <span className="text-primary font-semibold">
+                              +£{choice.price.toFixed(2)}
+                            </span>
+                          )}
+                        </label>
+                      ))}
+                    </RadioGroup>
+                  ) : (
+                    currentOption.choices?.map((choice: any) => {
+                      const isSelected =
+                        selectedOptions[currentOption._id]?.includes(choice._id) || false;
+                      return (
+                        <label
+                          key={choice._id}
+                          htmlFor={choice._id}
+                          className={`
+                            flex items-center justify-between rounded-xl border px-4 py-5 cursor-pointer
+                            ${isSelected
+                              ? "border-primary ring-2 ring-primary/30"
+                              : "border-slate-200 hover:border-slate-300"}
+                          `}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Checkbox
+                              id={choice._id}
+                              checked={isSelected}
+                              onCheckedChange={(checked) =>
+                                handleOptionChange(currentOption._id, choice._id, !!checked)
+                              }
+                            />
+                            <span className="text-base">{choice.name}</span>
+                          </div>
+                          {choice.price > 0 && (
+                            <span className="text-primary font-semibold">
+                              +£{choice.price.toFixed(2)}
+                            </span>
+                          )}
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* quantity shown ONLY on last step, like screenshots */}
+            {(isLastStep || selectedItem.options.length === 0) && (
+              <div className="mt-8 flex justify-center">
+                <div className="flex items-center gap-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={decQty}
+                    className="h-14 w-14 rounded-full"
+                  >
+                    <Minus className="h-5 w-5" />
+                  </Button>
+                  <span className="text-3xl font-bold tabular-nums min-w-[3ch] text-center">
+                    {quantity}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={incQty}
+                    className="h-14 w-14 rounded-full"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* CART VIEW when not configuring */}
+        {!selectedItem && (
+          <div className="px-6 py-6">
+            {cartItems.length === 0 ? (
               <div className="text-center text-muted-foreground py-12">
                 <ShoppingCart className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>Your cart is empty</p>
                 <p className="text-sm mt-2">Add items to get started</p>
               </div>
-            )
-            : (
+            ) : (
               <div className="space-y-4">
                 {cartItems.map((cartItem: CartItem) => (
                   <Card key={cartItem.optionsHash} className="border-slate-200">
-                    {/* Use optionsHash as key */}
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-medium">
-                          {cartItem.menuItem.name}
-                        </h4>
+                        <h4 className="font-medium">{cartItem.menuItem.name}</h4>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() =>
-                            removeItem(cartItem.optionsHash)}
+                          onClick={() => removeItem(cartItem.optionsHash)}
                           className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -391,30 +527,30 @@ export default function Menu() {
                         <span className="font-bold text-primary">
                           £{cartItem.totalPrice.toFixed(2)}
                         </span>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center gap-2">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() =>
                               updateCartItemQuantity(
                                 cartItem.optionsHash,
-                                cartItem.quantity - 1,
-                              )}
+                                cartItem.quantity - 1
+                              )
+                            }
                             className="h-8 w-8 p-0"
                           >
                             <Minus className="h-3 w-3" />
                           </Button>
-                          <span className="w-8 text-center">
-                            {cartItem.quantity}
-                          </span>
+                          <span className="w-8 text-center">{cartItem.quantity}</span>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() =>
                               updateCartItemQuantity(
                                 cartItem.optionsHash,
-                                cartItem.quantity + 1,
-                              )}
+                                cartItem.quantity + 1
+                              )
+                            }
                             className="h-8 w-8 p-0"
                           >
                             <Plus className="h-3 w-3" />
@@ -426,47 +562,61 @@ export default function Menu() {
                 ))}
               </div>
             )}
-        </ScrollArea>
-      </div>
+          </div>
+        )}
+      </ScrollArea>
+    </div>
 
-      {/* Fixed Bottom Section - Order Summary */}
-      {cartItems.length > 0 && (
-        <div className="border-t border-slate-200 p-6 space-y-4 flex-shrink-0 bg-white">
+    {/* STICKY BOTTOM BAR — EXACTLY LIKE THE MOCKS */}
+    {selectedItem ? (
+      <div className="sticky bottom-0 left-0 right-0 bg-white border-t px-6 py-4">
+        <Button
+          onClick={() => (isLastStep || selectedItem.options.length === 0 ? nextOrAddToCart() : nextStep())}
+          disabled={!canProceed()}
+          className="w-full h-14 text-lg font-semibold justify-between px-6"
+        >
+          <span>
+            {isLastStep || selectedItem.options.length === 0 ? "Add to Cart" : "Next"}
+          </span>
+          <span className="font-bold">
+            £{(calculateItemPrice(selectedItem, selectedOptions) * (isLastStep ? quantity : 1)).toFixed(2)}
+          </span>
+        </Button>
+      </div>
+    ) : (
+      cartItems.length > 0 && (
+        <div className="sticky bottom-0 left-0 right-0 bg-white border-t px-6 py-4 space-y-4">
           <div>
             <Label className="text-sm font-medium">Special Instructions</Label>
             <Textarea
               placeholder="Any special requests..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="mt-2"
               rows={3}
+              className="mt-2"
             />
           </div>
           <Separator />
           <div className="flex justify-between items-center">
             <span className="text-lg font-semibold">Total</span>
-            <span className="text-xl font-bold text-primary">
-              £{totalAmount.toFixed(2)}
-            </span>
+            <span className="text-xl font-bold text-primary">£{totalAmount.toFixed(2)}</span>
           </div>
-          <Button
-            onClick={() => setShowConfirmDialog(true)}
-            className="w-full"
-            size="lg"
-          >
+          <Button onClick={() => setShowConfirmDialog(true)} className="w-full h-14 text-lg">
             Confirm Order
           </Button>
         </div>
-      )}
-    </div>
-  );
+      )
+    )}
+  </div>
+);
+
 
   return (
     <div className="min-h-screen bg-slate-50 h-screen overflow-hidden">
       <ResizableLayout sidebar={sidebarContent}>{mainContent}</ResizableLayout>
 
       {/* Item Modal */}
-      <Dialog open={!!selectedItem} onOpenChange={() => setSelectedItem(null)}>
+      <Dialog open={false} onOpenChange={(e) => {}}>
         <DialogContent className="max-w-2xl">
           {selectedItem && (
             <>

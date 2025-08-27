@@ -20,10 +20,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  useCartOperations,
-  useCheckoutCart
-} from "@/core/hooks/cart_hooks";
+import { useCartOperations, useCheckoutCart } from "@/core/hooks/cart_hooks";
 import { useGetMenuCategories } from "@/core/hooks/get-categories-hooks";
 import { useGetMenuItems } from "@/core/hooks/get-menu-items";
 import type { CartItem } from "@/core/models/dtos/cart-dtos";
@@ -36,7 +33,7 @@ import {
   Plus,
   Search,
   ShoppingCart,
-  Trash2
+  Trash2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ResizableLayout } from "../components/resizable-layout";
@@ -68,7 +65,7 @@ export const Route = createFileRoute("/menu")({
 
 export default function Menu() {
   const navigate = useNavigate();
-const pendingUpdatesRef = useRef<Set<string>>(new Set());
+  const pendingUpdatesRef = useRef<Set<string>>(new Set());
 
   // Local state
   const [searchQuery, setSearchQuery] = useState("");
@@ -86,10 +83,6 @@ const pendingUpdatesRef = useRef<Set<string>>(new Set());
   const [orderNote, setOrderNote] = useState("");
   const [promoCode, setPromoCode] = useState("");
   const [discount, setDiscount] = useState(0);
-  
-  console.log("setPromoCode:", setPromoCode);
-  
-
 
   // Check if this is a pickup order (no tableId)
   const tableId = new URLSearchParams(window.location.search).get("tableId");
@@ -120,24 +113,24 @@ const pendingUpdatesRef = useRef<Set<string>>(new Set());
   const debouncedPickupQuantities = useDebounce(pickupQuantities, 500);
 
   // Breakdown for pickup orders
-  const { data: breakdown} = useGetBreakDown(
+  const { data: breakdown } = useGetBreakDown(
     promoCode,
   );
 
   // Handle debounced pickup cart updates
-useEffect(() => {
-  if (isPickupOrder) {
-    Object.entries(debouncedPickupQuantities).forEach(
-      ([itemId]) => {
-        // Only update if we have a pending update for this item
-        if (pendingUpdatesRef.current.has(itemId)) {
-          pendingUpdatesRef.current.delete(itemId);
-          // updatePickupCartQuantity.mutate({ itemId, quantity });
-        }
-      },
-    );
-  }
-}, [debouncedPickupQuantities, isPickupOrder, updatePickupCartQuantity]);
+  useEffect(() => {
+    if (isPickupOrder) {
+      Object.entries(debouncedPickupQuantities).forEach(
+        ([itemId]) => {
+          // Only update if we have a pending update for this item
+          if (pendingUpdatesRef.current.has(itemId)) {
+            pendingUpdatesRef.current.delete(itemId);
+            // updatePickupCartQuantity.mutate({ itemId, quantity });
+          }
+        },
+      );
+    }
+  }, [debouncedPickupQuantities, isPickupOrder, updatePickupCartQuantity]);
 
   // Get appropriate cart data based on order type
   const cartItems = useMemo(() => {
@@ -236,17 +229,15 @@ useEffect(() => {
     });
   };
 
-  
-
   useEffect(() => {
-  if (isPickupOrder && pickupCart.data?.items) {
-    const initialQuantities: Record<string, number> = {};
-    pickupCart.data.items.forEach((item: any) => {
-      initialQuantities[item.optionsHash] = item.quantity;
-    });
-    setPickupQuantities(initialQuantities);
-  }
-}, [isPickupOrder, pickupCart.data?.items]);
+    if (isPickupOrder && pickupCart.data?.items) {
+      const initialQuantities: Record<string, number> = {};
+      pickupCart.data.items.forEach((item: any) => {
+        initialQuantities[item.optionsHash] = item.quantity;
+      });
+      setPickupQuantities(initialQuantities);
+    }
+  }, [isPickupOrder, pickupCart.data?.items]);
 
   const canProceed = () => {
     if (!currentOption) return true;
@@ -315,34 +306,37 @@ useEffect(() => {
   const decQty = () => setQuantity((prev) => Math.max(1, prev - 1));
 
   // Conditional cart item quantity update
- const updateCartItemQuantity = (
-  identifier: string,
-  newQuantity: number,
-) => {
-  if (isPickupOrder) {
-    if (newQuantity <= 0) {
-      removeFromPickupCart.mutate(identifier);
-      // Clean up pending updates and local state
-      pendingUpdatesRef.current.delete(identifier);
-      setPickupQuantities((prev) => {
-        const newQuantities = { ...prev };
-        delete newQuantities[identifier];
-        return newQuantities;
-      });
+  const updateCartItemQuantity = (
+    identifier: string,
+    newQuantity: number,
+  ) => {
+    if (isPickupOrder) {
+      if (newQuantity <= 0) {
+        removeFromPickupCart.mutate(identifier);
+        // Clean up pending updates and local state
+        pendingUpdatesRef.current.delete(identifier);
+        setPickupQuantities((prev) => {
+          const newQuantities = { ...prev };
+          delete newQuantities[identifier];
+          return newQuantities;
+        });
+      } else {
+        // Mark this item as having a pending update
+        pendingUpdatesRef.current.add(identifier);
+        setPickupQuantities((prev) => ({ ...prev, quantity: newQuantity }));
+        updatePickupCartQuantity.mutate({
+          itemId: identifier,
+          quantity: newQuantity,
+        });
+      }
     } else {
-      // Mark this item as having a pending update
-      pendingUpdatesRef.current.add(identifier);
-      setPickupQuantities((prev) => ({ ...prev, quantity: newQuantity }));
-      updatePickupCartQuantity.mutate({ itemId: identifier, quantity: newQuantity });
+      if (newQuantity <= 0) {
+        tableCartOps.removeItem(identifier);
+      } else {
+        tableCartOps.updateItem(identifier, { quantity: newQuantity });
+      }
     }
-  } else {
-    if (newQuantity <= 0) {
-      tableCartOps.removeItem(identifier);
-    } else {
-      tableCartOps.updateItem(identifier, { quantity: newQuantity });
-    }
-  }
-};
+  };
 
   // Conditional cart item removal
   const handleRemoveItem = (identifier: string) => {
@@ -374,7 +368,6 @@ useEffect(() => {
         if (response._id) {
           clearPickupCart.mutate();
         }
-        
       });
     } else {
       // Table checkout
@@ -435,6 +428,15 @@ useEffect(() => {
                 ? "Change Category"
                 : "Choose Category"}
             />
+            <Button
+              variant={selectedCategory === null
+                  ? "default"
+                  : "outline"}
+              onClick={() => setSelectedCategory(null)}
+              className="min-h-12 h-auto rounded-lg p-3"
+            >
+              <span className="break-words text-left">All</span>
+            </Button>
             {categories?.data.slice(0, 9).map((category) => (
               <Button
                 key={category.id}
@@ -808,8 +810,6 @@ useEffect(() => {
                           </Card>
                         ))
                       )}
-
-                   
                   </div>
                 )}
             </div>
@@ -842,7 +842,7 @@ useEffect(() => {
         : (
           cartItems.length > 0 && (
             <div className="sticky bottom-0 left-0 right-0 bg-white border-t px-6 py-4 space-y-4">
-              {(
+              {
                 <div>
                   <Label className="text-sm font-medium">
                     Special Instructions
@@ -855,21 +855,21 @@ useEffect(() => {
                     className="mt-2"
                   />
                   {/* Discount */}
-                 <Label className="text-sm font-medium mt-4">
-        Discount Code
-      </Label>
-      <Input
-        type="number"
-        placeholder="Enter discount code"
-        value={discount}
-        onChange={(e) => {
-          const val = Number(e.target.value);
-          setDiscount(isNaN(val) ? 0 : val);
-        }}
-        className="mt-2"
-      />
+                  <Label className="text-sm font-medium mt-4">
+                    Discount Code
+                  </Label>
+                  <Input
+                    type="number"
+                    placeholder="Enter discount code"
+                    value={discount}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setDiscount(isNaN(val) ? 0 : val);
+                    }}
+                    className="mt-2"
+                  />
                 </div>
-              )}
+              }
 
               <Separator />
               <div className="flex justify-between items-center">
@@ -916,7 +916,8 @@ useEffect(() => {
             </div>
             <DialogFooter>
               <Button
-                onClick={() => setShowNoteDialog(false)}
+                onClick={() =>
+                  setShowNoteDialog(false)}
               >
                 Save Note
               </Button>

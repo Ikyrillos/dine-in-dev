@@ -18,14 +18,13 @@ import {
 import { Button } from "@/components/ui/button";
 import type { IMenuCategory } from "@/core/models/IMenuCategory";
 
-
 type CategoryChooserDialogProps = {
   /** Array of categories to list in the dialog */
   categories?: { data: IMenuCategory[] } | null;
   /** Currently selected category id (as string) or null for "All" */
   selectedCategory?: string | null;
   /** Callback when a category (or All) is chosen */
-  onSelect: (value: string) => void;
+  onSelect: (value: string | null) => void;
   /** Optional trigger content. Defaults to a button with an icon + label */
   triggerLabel?: string;
   /** Optional description text under the title */
@@ -39,7 +38,8 @@ const CategoryChooserDialog: React.FC<CategoryChooserDialogProps> = ({
   selectedCategory = null,
   onSelect,
   triggerLabel = "Choose Category",
-  description = "Pick a category to filter the list. You can always change this later.",
+  description =
+    "Pick a category to filter the list. You can always change this later.",
   disabled = false,
 }) => {
   const [open, setOpen] = React.useState(false);
@@ -52,7 +52,11 @@ const CategoryChooserDialog: React.FC<CategoryChooserDialogProps> = ({
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant="outline" className="min-h-12 h-auto rounded-lg p-3" disabled={disabled}>
+        <Button
+          variant="outline"
+          className="min-h-12 h-auto rounded-lg p-3"
+          disabled={disabled}
+        >
           <MenuIcon className="h-4 w-4 mr-2" />
           {triggerLabel}
         </Button>
@@ -67,6 +71,13 @@ const CategoryChooserDialog: React.FC<CategoryChooserDialogProps> = ({
         {/* Choices */}
         <div className="grid grid-cols-3 gap-2">
           {/* Dynamic Categories */}
+          <Button
+            variant={selectedCategory === null ? "default" : "outline"}
+            onClick={() => onSelect(null)}
+          >
+            <span className="break-words text-left">All</span>
+          </Button>
+
           {categories?.data?.map((category) => {
             const isActive = String(selectedCategory) === String(category.id);
             return (
@@ -84,9 +95,13 @@ const CategoryChooserDialog: React.FC<CategoryChooserDialogProps> = ({
 
         <AlertDialogFooter>
           <AlertDialogCancel>Close</AlertDialogCancel>
-          {/* Optional primary action if you want a confirm step. 
-              Keeping it for parity with the shadcn pattern; it just closes. */}
-          <AlertDialogAction onClick={() => setOpen(false)}>Done</AlertDialogAction>
+          {
+            /* Optional primary action if you want a confirm step.
+              Keeping it for parity with the shadcn pattern; it just closes. */
+          }
+          <AlertDialogAction onClick={() => setOpen(false)}>
+            Done
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

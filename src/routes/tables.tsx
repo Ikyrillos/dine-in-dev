@@ -37,7 +37,6 @@ import type { Table } from "@/core/models/TableModel";
 import {
   ArrowLeft,
   Banknote,
-  Check,
   CreditCard
 } from "lucide-react";
 
@@ -94,6 +93,7 @@ export default function TableSelection() {
   const { cart, getCart } = useCartOperations(
     selectedTable?.id || "",
   );
+
   const clearCartMutation = useClearCart();
   const cartCheckout = useCheckoutCart();
 
@@ -162,7 +162,7 @@ export default function TableSelection() {
     navigate({ to: "/menu", search: { tableId, name: selectedTable?.name } });
 
   const handlePickupOrder = () =>
-    navigate({ to: "/menu", search: { orderType: "pickup" } });
+    navigate({ to: "/menu", search: { name: "pickup" } });
 
   const handlePaymentMethodSelect = (method: string) => {
     if (method === "cash") {
@@ -461,8 +461,7 @@ export default function TableSelection() {
                             variant="outline"
                             className="w-full border-primary text-primary hover:bg-primary hover:text-white rounded-xl h-14 text-lg font-semibold"
                           >
-                            <Check className="w-4 h-4 mr-2" />
-                            Confirm Order
+                            Payment
                           </Button>
                         )}
                     </div>

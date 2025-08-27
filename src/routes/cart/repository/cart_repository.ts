@@ -1,0 +1,162 @@
+import { BASE_URL } from "@/core/apis-endpoints";
+import { makeRequest } from "@/core/make-request";
+import { AxiosError } from "axios";
+import type { ICart } from "../models/cart-item-model";
+
+
+export interface CheckoutResponse {
+    id: string;
+    object: string;
+    // ... include any other fields you need
+    url: string; // the URL to redirect to
+    message: string;
+    error?: string;
+}
+
+export interface CheckoutData {
+    successUrl: string;
+    failUrl: string;
+    addressId?: string;
+    note?: string;
+    promoCode?: string;
+    source: "Dine-in" | "web",
+}
+
+/**
+ * {
+    "discount": 0,
+    "tax": 0,
+    "shippingCost": 0,
+    "applicationFeeAmount": 299,
+    "totalAmount": 6659
+}
+ */
+
+export interface BreakdownResponse {
+    discount: number;
+    tax: number;
+    shippingCost: number;
+    applicationFeeAmount: number;
+    totalAmount: number;
+}
+class CartRepository {
+    /**
+     * Add item to cart
+     * @param data Item data to add to the cart
+     * @returns Response from the cart
+     */
+    async addItemToCart(data: {
+        menuItemId: string;
+        quantity: number;
+        selectedOptions: {
+            optionId: string;
+            choiceIds: string[];
+        }[];
+    }) {
+        return await makeRequest({
+            method: "POST",
+            url: `${BASE_URL}/restaurant-cart`,
+            data: {
+                menuItemId: data.menuItemId,
+                quantity: data.quantity,
+                selectedOptions: data.selectedOptions.map(option => ({
+                    optionId: option.optionId,
+                    choiceIds: option.choiceIds,
+                })),
+            },
+            withCredentials: true,
+        });
+    }
+
+    /**
+     * Get user cart
+     * @returns User cart data
+     */
+    async getCart() {
+        const { data } = await makeRequest<unknown, ICart>({
+            method: "GET",
+            url: `${BASE_URL}/restaurant-cart`,
+        });
+        return data;
+    }
+
+  async  postCheckout({ successUrl, failUrl, addressId, note, promoCode }: CheckoutData): Promise<CheckoutResponse> {
+        const { data } = await makeRequest<CheckoutData, CheckoutResponse>({
+            method: "POST",
+            url: `${BASE_URL}/restaurant-cart/checkout`,
+            data: {
+                successUrl,
+                failUrl,
+                addressId: addressId ? addressId : undefined,
+                note,
+                promoCode: promoCode,
+                source: 'web'
+            },
+        });
+        return data;
+    };
+
+
+    breakdown = async ({ addressId, note, promoCode }: CheckoutData): Promise<BreakdownResponse> => {
+        try {
+
+            const { data } = await makeRequest<CheckoutData, BreakdownResponse>({
+                method: "POST",
+                url: `${BASE_URL}/restaurant-cart/breakdown`,
+                data: {
+                    successUrl: "",
+                    failUrl: "",
+                    addressId: addressId ? addressId : undefined,
+                    note,
+                    promoCode: promoCode,
+                    source: "web",
+                },
+            });
+            return data;
+        } catch (error) {
+            if (error instanceof AxiosError && error?.response?.status === 400) {
+                return error?.response?.data;
+            }
+            throw error;
+        }
+    };
+
+    /**
+     * Clear user cart
+     * @returns Response after clearing the cart
+     */
+    async clearCart() {
+        return await makeRequest<void, unknown>({
+            method: "DELETE",
+            url: `${BASE_URL}/restaurant-cart`,
+        });
+    }
+
+    /**
+     * Update item quantity in cart
+     * @param itemId Item ID in the cart
+     * @param quantity New quantity for the item
+     * @returns Response from the cart
+     */
+    async updateItemQuantity(itemId: string, quantity: number) {
+        return await makeRequest<{ quantity: number }, unknown>({
+            method: "PUT",
+            url: `${BASE_URL}/restaurant-cart/items/${itemId}`,
+            data: { quantity },
+        });
+    }
+
+    /**
+     * Remove item from cart
+     * @param itemId Item ID to remove
+     * @returns Response after removing the item
+     */
+    async removeItemFromCart(itemId: string) {
+        return await makeRequest<void, unknown>({
+            method: "DELETE",
+            url: `${BASE_URL}/restaurant-cart/items/${itemId}`,
+        });
+    }
+}
+
+export const cartApi = new CartRepository();

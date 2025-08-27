@@ -20,7 +20,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { useCartOperations, useCheckoutCart } from "@/core/hooks/cart_hooks";
+import {
+  useCartOperations,
+  useCheckoutCart
+} from "@/core/hooks/cart_hooks";
 import { useGetMenuCategories } from "@/core/hooks/get-categories-hooks";
 import { useGetMenuItems } from "@/core/hooks/get-menu-items";
 import type { CartItem } from "@/core/models/dtos/cart-dtos";
@@ -33,10 +36,23 @@ import {
   Plus,
   Search,
   ShoppingCart,
-  Trash2,
+  Trash2
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ResizableLayout } from "../components/resizable-layout";
+import {
+  useAddToCart,
+  useClearCart,
+  useGetBreakDown,
+  useGetCart,
+  useRemovePickupCartItem,
+  useUpdateCartItemQuantity,
+} from "./cart/hooks/cart-hooks";
+import { cartApi } from "./cart/repository/cart_repository";
+import { useCurrencyStore } from "./cart/stores/currency-store";
+import { useDebounce } from "./cart/stores/use_debounce";
+
+// Import pickup cart hooks and utilities
 
 export const Route = createFileRoute("/menu")({
   component: Menu,
@@ -52,50 +68,108 @@ export const Route = createFileRoute("/menu")({
 
 export default function Menu() {
   const navigate = useNavigate();
+const pendingUpdatesRef = useRef<Set<string>>(new Set());
 
-  // Local state with hooks
+  // Local state
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<IMenuItem | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [orderType] = useState("pickup");
   const [selectedTable] = useState("");
   const [currentOptionIndex, setCurrentOptionIndex] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<
     Record<string, string[]>
   >({});
+  const [showNoteDialog, setShowNoteDialog] = useState(false);
+  const [orderNote, setOrderNote] = useState("");
+  const [promoCode, setPromoCode] = useState("");
+  const [discount, setDiscount] = useState(0);
+  
+  console.log("setPromoCode:", setPromoCode);
+  
 
-  // params tableId
+
+  // Check if this is a pickup order (no tableId)
   const tableId = new URLSearchParams(window.location.search).get("tableId");
   const tableName = new URLSearchParams(window.location.search).get("name");
+  const isPickupOrder = tableName?.toLowerCase().includes("pickup") ?? false;
 
+  // Hooks for categories and menu items
   const { data: categories, isLoading: categoriesLoading } =
     useGetMenuCategories();
   const { data: menuItems, isLoading: menuItemsLoading } = useGetMenuItems();
-  const {
-    cart,
-    addItem,
-    updateItem,
-    removeItem,
-    // clearCart,
-  } = useCartOperations(tableId ?? "");
+  const clearPickupCart = useClearCart();
 
-  const cartCheckout = useCheckoutCart();
+  // Conditional cart hooks based on order type
+  const tableCartOps = useCartOperations(tableId ?? "");
+  const tableCartCheckout = useCheckoutCart();
 
-  // Computed values using useMemo for performance
-  // ✅ robust, headache-free filtering
+  // Pickup cart hooks (only used for pickup orders)
+  const pickupCart = useGetCart();
+  const addToPickupCart = useAddToCart();
+  const updatePickupCartQuantity = useUpdateCartItemQuantity();
+  const removeFromPickupCart = useRemovePickupCartItem();
+  const { currencySymbol } = useCurrencyStore();
+
+  // Pickup cart state for debounced updates
+  const [pickupQuantities, setPickupQuantities] = useState<
+    Record<string, number>
+  >({});
+  const debouncedPickupQuantities = useDebounce(pickupQuantities, 500);
+
+  // Breakdown for pickup orders
+  const { data: breakdown} = useGetBreakDown(
+    promoCode,
+  );
+
+  // Handle debounced pickup cart updates
+useEffect(() => {
+  if (isPickupOrder) {
+    Object.entries(debouncedPickupQuantities).forEach(
+      ([itemId]) => {
+        // Only update if we have a pending update for this item
+        if (pendingUpdatesRef.current.has(itemId)) {
+          pendingUpdatesRef.current.delete(itemId);
+          // updatePickupCartQuantity.mutate({ itemId, quantity });
+        }
+      },
+    );
+  }
+}, [debouncedPickupQuantities, isPickupOrder, updatePickupCartQuantity]);
+
+  // Get appropriate cart data based on order type
+  const cartItems = useMemo(() => {
+    if (isPickupOrder) {
+      return pickupCart.data?.items || [];
+    }
+    return (tableCartOps.cart?.items || []) as CartItem[];
+  }, [isPickupOrder, pickupCart.data?.items, tableCartOps.cart?.items]);
+
+  const totalAmount = useMemo(() => {
+    if (isPickupOrder) {
+      return breakdown?.totalAmount
+        ? breakdown.totalAmount / 100
+        : (pickupCart.data?.totalAmount || 0);
+    }
+    return tableCartOps.cart?.totalAmount || 0;
+  }, [
+    isPickupOrder,
+    breakdown?.totalAmount,
+    pickupCart.data?.totalAmount,
+    tableCartOps.cart?.totalAmount,
+  ]);
+
+  // Computed values
   const filteredItems = useMemo(() => {
     const items = menuItems?.data ?? [];
     if (!items.length) return [];
 
-    // normalize selected category
     const selected = selectedCategory?.toString().trim();
     const hasCategory = !!selected;
 
     return items.filter((item: any) => {
-      // --- category match (support multiple common shapes) ---
       const itemCat = item.categoryId ??
         item.category?.id ??
         item.category?._id ??
@@ -105,7 +179,6 @@ export default function Menu() {
 
       const matchCategory = !hasCategory || String(itemCat) === selected;
 
-      // --- search match (name / description safe-lowercase) ---
       const q = (searchQuery || "").trim().toLowerCase();
       const matchSearch = !q ||
         (item.name ?? "").toLowerCase().includes(q) ||
@@ -114,14 +187,6 @@ export default function Menu() {
       return matchCategory && matchSearch;
     });
   }, [menuItems?.data, selectedCategory, searchQuery]);
-
-  const cartItems = useMemo(() => {
-    return (cart?.items || []) as CartItem[];
-  }, [cart?.items]);
-
-  const totalAmount = useMemo(() => {
-    return cart?.totalAmount || 0;
-  }, [cart?.totalAmount]);
 
   const currentOption = useMemo(() => {
     if (!selectedItem?.options?.length) return null;
@@ -154,7 +219,6 @@ export default function Menu() {
       const currentSelections = prev[optionId] || [];
 
       if (isSelected) {
-        // For radio type, replace all selections. For checkbox, add to selections
         const option = selectedItem?.options?.find((opt: any) =>
           opt._id === optionId
         );
@@ -164,7 +228,6 @@ export default function Menu() {
           return { ...prev, [optionId]: [...currentSelections, choiceId] };
         }
       } else {
-        // Remove the choice
         return {
           ...prev,
           [optionId]: currentSelections.filter((id) => id !== choiceId),
@@ -172,6 +235,18 @@ export default function Menu() {
       }
     });
   };
+
+  
+
+  useEffect(() => {
+  if (isPickupOrder && pickupCart.data?.items) {
+    const initialQuantities: Record<string, number> = {};
+    pickupCart.data.items.forEach((item: any) => {
+      initialQuantities[item.optionsHash] = item.quantity;
+    });
+    setPickupQuantities(initialQuantities);
+  }
+}, [isPickupOrder, pickupCart.data?.items]);
 
   const canProceed = () => {
     if (!currentOption) return true;
@@ -206,7 +281,6 @@ export default function Menu() {
     if (!selectedItem) return;
 
     if (isLastStep || selectedItem.options.length === 0) {
-      // Add to cart
       const cartItemOptions = Object.entries(selectedOptions).map((
         [optionId, choiceIds],
       ) => ({
@@ -214,16 +288,25 @@ export default function Menu() {
         choiceIds: Array.isArray(choiceIds) ? choiceIds : [choiceIds],
       }));
 
-      addItem({
-        menuItemId: selectedItem._id,
-        quantity,
-        selectedOptions: cartItemOptions,
-      });
+      if (isPickupOrder) {
+        // Use pickup cart logic
+        addToPickupCart.mutate({
+          menuItemId: selectedItem._id,
+          quantity,
+          selectedOptions: cartItemOptions,
+        });
+      } else {
+        // Use table cart logic
+        tableCartOps.addItem({
+          menuItemId: selectedItem._id,
+          quantity,
+          selectedOptions: cartItemOptions,
+        });
+      }
 
       setSelectedItem(null);
       resetConfiguration();
     } else {
-      // Go to next option
       nextStep();
     }
   };
@@ -231,12 +314,73 @@ export default function Menu() {
   const incQty = () => setQuantity((prev) => prev + 1);
   const decQty = () => setQuantity((prev) => Math.max(1, prev - 1));
 
-  const updateCartItemQuantity = (optionsHash: string, newQuantity: number) => {
+  // Conditional cart item quantity update
+ const updateCartItemQuantity = (
+  identifier: string,
+  newQuantity: number,
+) => {
+  if (isPickupOrder) {
     if (newQuantity <= 0) {
-      removeItem(optionsHash); // Use optionsHash instead of itemId
+      removeFromPickupCart.mutate(identifier);
+      // Clean up pending updates and local state
+      pendingUpdatesRef.current.delete(identifier);
+      setPickupQuantities((prev) => {
+        const newQuantities = { ...prev };
+        delete newQuantities[identifier];
+        return newQuantities;
+      });
     } else {
-      updateItem(optionsHash, { quantity: newQuantity });
+      // Mark this item as having a pending update
+      pendingUpdatesRef.current.add(identifier);
+      setPickupQuantities((prev) => ({ ...prev, quantity: newQuantity }));
+      updatePickupCartQuantity.mutate({ itemId: identifier, quantity: newQuantity });
     }
+  } else {
+    if (newQuantity <= 0) {
+      tableCartOps.removeItem(identifier);
+    } else {
+      tableCartOps.updateItem(identifier, { quantity: newQuantity });
+    }
+  }
+};
+
+  // Conditional cart item removal
+  const handleRemoveItem = (identifier: string) => {
+    console.log("Removing item with identifier:", identifier);
+    if (isPickupOrder) {
+      removeFromPickupCart.mutate(identifier);
+      setPickupQuantities((prev) => {
+        const newQuantities = { ...prev };
+        delete newQuantities[identifier];
+        return newQuantities;
+      });
+    } else {
+      tableCartOps.removeItem(identifier);
+    }
+  };
+
+  // Conditional checkout
+  const handleCheckout = () => {
+    if (isPickupOrder) {
+      // Pickup checkout
+      cartApi.postCheckout({
+        failUrl: "https://www.secondserving.uk/",
+        successUrl: "https://www.secondserving.uk/",
+        addressId: "",
+        note: notes,
+        promoCode: promoCode,
+        source: "Dine-in",
+      }).then((response) => {
+        if (response.url) {
+          clearPickupCart.mutate();
+        }
+        
+      });
+    } else {
+      // Table checkout
+      tableCartCheckout.mutate({ tableId: tableId || "", note: notes });
+    }
+    setShowConfirmDialog(false);
   };
 
   if (menuItemsLoading || categoriesLoading) {
@@ -271,7 +415,9 @@ export default function Menu() {
 
           <div className="text-right">
             <p className="text-sm text-muted-foreground">
-              {tableName ? tableName.replaceAll('"', "") : "Pickup Order"}
+              {isPickupOrder
+                ? "Pickup Order"
+                : (tableName ? tableName.replaceAll('"', "") : "Table Order")}
             </p>
           </div>
         </div>
@@ -331,7 +477,8 @@ export default function Menu() {
                         {item.name}
                       </h3>
                       <p className="text-lg font-bold text-primary mt-2">
-                        £{item.price.toFixed(2)}
+                        {currencySymbol}
+                        {item.price.toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -344,475 +491,439 @@ export default function Menu() {
     </div>
   );
 
- const sidebarContent = (
-  <div className="flex h-full flex-col bg-white">
-    {/* top header: "Your Order" -> per mock, we show the item flow header instead */}
-    <div className="flex items-center justify-between px-6 py-4 border-b">
-      {selectedItem ? (
-        <div className="text-sm text-muted-foreground">
-          {currentOption ? `${currentOptionIndex + 1} of ${selectedItem.options.length}` : ""}
-        </div>
-      ) : (
-        <div className="flex items-center gap-2">
-          <h2 className="text-xl font-bold">Your Order</h2>
-          <Badge variant="secondary">
-            {cartItems.length} item{cartItems.length !== 1 ? "s" : ""}
-          </Badge>
-        </div>
-      )}
-    </div>
+  const sidebarContent = (
+    <div className="flex h-full flex-col bg-white">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b">
+        {selectedItem
+          ? (
+            <div className="text-sm text-muted-foreground">
+              {currentOption
+                ? `${currentOptionIndex + 1} of ${selectedItem.options.length}`
+                : ""}
+            </div>
+          )
+          : (
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold">Your Order</h2>
+              <Badge variant="secondary">
+                {cartItems.length} item{cartItems.length !== 1 ? "s" : ""}
+              </Badge>
+            </div>
+          )}
+      </div>
 
-    {/* BODY */}
-    <div className="flex-1 overflow-hidden">
-      <ScrollArea className="h-full">
-        {/* CONFIG VIEW (matches screenshots) */}
-        {selectedItem && (
-          <div className="px-6 pb-32"> {/* bottom padding so content clears sticky footer */}
-            {/* big image + title/desc */}
-            <div className="pt-6 flex flex-col items-center">
-              <div className="w-28 h-28 rounded-xl bg-gray-100 overflow-hidden mb-4">
-                <img
-                  src={selectedItem.photoUrl || "/placeholder.png"}
-                  alt={selectedItem.name}
-                  className="w-full h-full object-cover"
-                />
+      {/* Body */}
+      <div className="flex-1 overflow-hidden">
+        <ScrollArea className="h-full">
+          {/* Item Configuration View */}
+          {selectedItem && (
+            <div className="px-6 pb-32">
+              <div className="pt-6 flex flex-col items-center">
+                <div className="w-28 h-28 rounded-xl bg-gray-100 overflow-hidden mb-4">
+                  <img
+                    src={selectedItem.photoUrl || "/placeholder.png"}
+                    alt={selectedItem.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                <h2 className="text-2xl font-extrabold tracking-tight text-gray-900 text-center">
+                  {selectedItem.name}
+                </h2>
+                {selectedItem.description && (
+                  <p className="mt-2 text-sm text-gray-600 text-center max-w-[36ch]">
+                    {selectedItem.description}
+                  </p>
+                )}
               </div>
 
-              <h2 className="text-2xl font-extrabold tracking-tight text-gray-900 text-center">
-                {selectedItem.name}
-              </h2>
-              {selectedItem.description && (
-                <p className="mt-2 text-sm text-gray-600 text-center max-w-[36ch]">
-                  {selectedItem.description}
-                </p>
+              {/* Options */}
+              {selectedItem.options.length > 0 && currentOption && (
+                <div className="mt-8">
+                  <p className="text-2xl font-bold">
+                    {currentOption.name}{" "}
+                    {currentOption.required && (
+                      <span className="text-destructive">*</span>
+                    )}
+                  </p>
+
+                  <div className="mt-4 space-y-3">
+                    {currentOption.type === "radio"
+                      ? (
+                        <RadioGroup
+                          value={selectedOptions[currentOption._id]?.[0] || ""}
+                          onValueChange={(value) =>
+                            handleOptionChange(currentOption._id, value, true)}
+                        >
+                          {currentOption.choices?.map((choice: any) => (
+                            <label
+                              key={choice._id}
+                              htmlFor={choice._id}
+                              className={`
+                              flex items-center justify-between rounded-xl border px-4 py-5 cursor-pointer
+                              ${
+                                selectedOptions[currentOption._id]?.[0] ===
+                                    choice._id
+                                  ? "border-primary ring-2 ring-primary/30"
+                                  : "border-slate-200 hover:border-slate-300"
+                              }
+                            `}
+                            >
+                              <div className="flex items-center gap-3">
+                                <RadioGroupItem
+                                  id={choice._id}
+                                  value={choice._id}
+                                />
+                                <span className="text-base">{choice.name}</span>
+                              </div>
+                              {choice.price > 0 && (
+                                <span className="text-primary font-semibold">
+                                  +{currencySymbol}
+                                  {choice.price.toFixed(2)}
+                                </span>
+                              )}
+                            </label>
+                          ))}
+                        </RadioGroup>
+                      )
+                      : (
+                        currentOption.choices?.map((choice: any) => {
+                          const isSelected =
+                            selectedOptions[currentOption._id]?.includes(
+                              choice._id,
+                            ) || false;
+                          return (
+                            <label
+                              key={choice._id}
+                              htmlFor={choice._id}
+                              className={`
+                              flex items-center justify-between rounded-xl border px-4 py-5 cursor-pointer
+                              ${
+                                isSelected
+                                  ? "border-primary ring-2 ring-primary/30"
+                                  : "border-slate-200 hover:border-slate-300"
+                              }
+                            `}
+                            >
+                              <div className="flex items-center gap-3">
+                                <Checkbox
+                                  id={choice._id}
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) =>
+                                    handleOptionChange(
+                                      currentOption._id,
+                                      choice._id,
+                                      !!checked,
+                                    )}
+                                />
+                                <span className="text-base">{choice.name}</span>
+                              </div>
+                              {choice.price > 0 && (
+                                <span className="text-primary font-semibold">
+                                  +{currencySymbol}
+                                  {choice.price.toFixed(2)}
+                                </span>
+                              )}
+                            </label>
+                          );
+                        })
+                      )}
+                  </div>
+                </div>
+              )}
+
+              {/* Quantity selector - only on last step */}
+              {(isLastStep || selectedItem.options.length === 0) && (
+                <div className="mt-8 flex justify-center">
+                  <div className="flex items-center gap-6">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={decQty}
+                      className="h-14 w-14 rounded-full"
+                    >
+                      <Minus className="h-5 w-5" />
+                    </Button>
+                    <span className="text-3xl font-bold tabular-nums min-w-[3ch] text-center">
+                      {quantity}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={incQty}
+                      className="h-14 w-14 rounded-full"
+                    >
+                      <Plus className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </div>
               )}
             </div>
+          )}
 
-            {/* OPTION GROUP (STEP) */}
-            {selectedItem.options.length > 0 && currentOption && (
-              <div className="mt-8">
-                <p className="text-2xl font-bold">{
-                  // “Size *” like pic 1
-                  <>
-                    {currentOption.name}{" "}
-                    {currentOption.required && <span className="text-destructive">*</span>}
-                  </>
-                }</p>
-
-                {/* choices list */}
-                <div className="mt-4 space-y-3">
-                  {currentOption.type === "radio" ? (
-                    <RadioGroup
-                      value={selectedOptions[currentOption._id]?.[0] || ""}
-                      onValueChange={(value) => handleOptionChange(currentOption._id, value, true)}
-                    >
-                      {currentOption.choices?.map((choice: any) => (
-                        <label
-                          key={choice._id}
-                          htmlFor={choice._id}
-                          className={`
-                            flex items-center justify-between rounded-xl border px-4 py-5 cursor-pointer
-                            ${selectedOptions[currentOption._id]?.[0] === choice._id
-                              ? "border-primary ring-2 ring-primary/30"
-                              : "border-slate-200 hover:border-slate-300"}
-                          `}
-                        >
-                          <div className="flex items-center gap-3">
-                            <RadioGroupItem id={choice._id} value={choice._id} />
-                            <span className="text-base">{choice.name}</span>
-                          </div>
-                          {choice.price > 0 && (
-                            <span className="text-primary font-semibold">
-                              +£{choice.price.toFixed(2)}
-                            </span>
-                          )}
-                        </label>
-                      ))}
-                    </RadioGroup>
-                  ) : (
-                    currentOption.choices?.map((choice: any) => {
-                      const isSelected =
-                        selectedOptions[currentOption._id]?.includes(choice._id) || false;
-                      return (
-                        <label
-                          key={choice._id}
-                          htmlFor={choice._id}
-                          className={`
-                            flex items-center justify-between rounded-xl border px-4 py-5 cursor-pointer
-                            ${isSelected
-                              ? "border-primary ring-2 ring-primary/30"
-                              : "border-slate-200 hover:border-slate-300"}
-                          `}
-                        >
-                          <div className="flex items-center gap-3">
-                            <Checkbox
-                              id={choice._id}
-                              checked={isSelected}
-                              onCheckedChange={(checked) =>
-                                handleOptionChange(currentOption._id, choice._id, !!checked)
-                              }
-                            />
-                            <span className="text-base">{choice.name}</span>
-                          </div>
-                          {choice.price > 0 && (
-                            <span className="text-primary font-semibold">
-                              +£{choice.price.toFixed(2)}
-                            </span>
-                          )}
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* quantity shown ONLY on last step, like screenshots */}
-            {(isLastStep || selectedItem.options.length === 0) && (
-              <div className="mt-8 flex justify-center">
-                <div className="flex items-center gap-6">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={decQty}
-                    className="h-14 w-14 rounded-full"
-                  >
-                    <Minus className="h-5 w-5" />
-                  </Button>
-                  <span className="text-3xl font-bold tabular-nums min-w-[3ch] text-center">
-                    {quantity}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={incQty}
-                    className="h-14 w-14 rounded-full"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* CART VIEW when not configuring */}
-        {!selectedItem && (
-          <div className="px-6 py-6">
-            {cartItems.length === 0 ? (
-              <div className="text-center text-muted-foreground py-12">
-                <ShoppingCart className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Your cart is empty</p>
-                <p className="text-sm mt-2">Add items to get started</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {cartItems.map((cartItem: CartItem) => (
-                  <Card key={cartItem.optionsHash} className="border-slate-200">
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-medium">{cartItem.menuItem.name}</h4>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeItem(cartItem.optionsHash)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-primary">
-                          £{cartItem.totalPrice.toFixed(2)}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              updateCartItemQuantity(
-                                cartItem.optionsHash,
-                                cartItem.quantity - 1
-                              )
-                            }
-                            className="h-8 w-8 p-0"
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="w-8 text-center">{cartItem.quantity}</span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              updateCartItemQuantity(
-                                cartItem.optionsHash,
-                                cartItem.quantity + 1
-                              )
-                            }
-                            className="h-8 w-8 p-0"
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
+          {/* Cart View */}
+          {!selectedItem && (
+            <div className="px-6 py-6">
+              {cartItems.length === 0
+                ? (
+                  <div className="text-center text-muted-foreground py-12">
+                    <ShoppingCart className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Your cart is empty</p>
+                    <p className="text-sm mt-2">Add items to get started</p>
+                  </div>
+                )
+                : (
+                  <div className="space-y-4">
+                    {isPickupOrder
+                      ? (
+                        // Pickup cart items using CartItemCard
+                        <div>
+                          {cartItems.map((item: any) => (
+                            (
+                              <Card
+                                key={item.optionsHash}
+                                className="border-slate-200 my-2"
+                              >
+                                <CardContent className="">
+                                  <div className="flex justify-between items-start">
+                                    <h4 className="font-medium">
+                                      {item.menuItem.name}
+                                    </h4>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() =>
+                                        handleRemoveItem(
+                                          item.optionsHash,
+                                        )}
+                                      className="text-destructive hover:text-destructive"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-bold text-primary">
+                                      {currencySymbol}
+                                      {item.totalPrice.toFixed(2)}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                          updateCartItemQuantity(
+                                            item.optionsHash,
+                                            item.quantity - 1,
+                                          )}
+                                        className="h-8 w-8 p-0"
+                                      >
+                                        <Minus className="h-3 w-3" />
+                                      </Button>
+                                      <span className="w-8 text-center">
+                                        {item.quantity}
+                                      </span>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                          updateCartItemQuantity(
+                                            item.optionsHash,
+                                            item.quantity + 1,
+                                          )}
+                                        className="h-8 w-8 p-0"
+                                      >
+                                        <Plus className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            )
+                          ))}
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </ScrollArea>
-    </div>
+                      )
+                      : (
+                        // Table cart items
+                        cartItems.map((cartItem: CartItem) => (
+                          <Card
+                            key={cartItem.optionsHash}
+                            className="border-slate-200"
+                          >
+                            <CardContent className="">
+                              <div className="flex justify-between items-start">
+                                <h4 className="font-medium">
+                                  {cartItem.menuItem.name}
+                                </h4>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleRemoveItem(
+                                      cartItem.optionsHash,
+                                    )}
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="font-bold text-primary">
+                                  {currencySymbol}
+                                  {cartItem.totalPrice.toFixed(2)}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      updateCartItemQuantity(
+                                        cartItem.optionsHash,
+                                        cartItem.quantity - 1,
+                                      )}
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <Minus className="h-3 w-3" />
+                                  </Button>
+                                  <span className="w-8 text-center">
+                                    {cartItem.quantity}
+                                  </span>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      updateCartItemQuantity(
+                                        cartItem.optionsHash,
+                                        cartItem.quantity + 1,
+                                      )}
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))
+                      )}
 
-    {/* STICKY BOTTOM BAR — EXACTLY LIKE THE MOCKS */}
-    {selectedItem ? (
-      <div className="sticky bottom-0 left-0 right-0 bg-white border-t px-6 py-4">
-        <Button
-          onClick={() => (isLastStep || selectedItem.options.length === 0 ? nextOrAddToCart() : nextStep())}
-          disabled={!canProceed()}
-          className="w-full h-14 text-lg font-semibold justify-between px-6"
-        >
-          <span>
-            {isLastStep || selectedItem.options.length === 0 ? "Add to Cart" : "Next"}
-          </span>
-          <span className="font-bold">
-            £{(calculateItemPrice(selectedItem, selectedOptions) * (isLastStep ? quantity : 1)).toFixed(2)}
-          </span>
-        </Button>
+                   
+                  </div>
+                )}
+            </div>
+          )}
+        </ScrollArea>
       </div>
-    ) : (
-      cartItems.length > 0 && (
-        <div className="sticky bottom-0 left-0 right-0 bg-white border-t px-6 py-4 space-y-4">
-          <div>
-            <Label className="text-sm font-medium">Special Instructions</Label>
-            <Textarea
-              placeholder="Any special requests..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              className="mt-2"
-            />
-          </div>
-          <Separator />
-          <div className="flex justify-between items-center">
-            <span className="text-lg font-semibold">Total</span>
-            <span className="text-xl font-bold text-primary">£{totalAmount.toFixed(2)}</span>
-          </div>
-          <Button onClick={() => setShowConfirmDialog(true)} className="w-full h-14 text-lg">
-            Confirm Order
-          </Button>
-        </div>
-      )
-    )}
-  </div>
-);
 
+      {/* Sticky Bottom Bar */}
+      {selectedItem
+        ? (
+          <div className="sticky bottom-0 left-0 right-0 bg-white border-t px-6 py-4 ">
+            <Button
+              onClick={nextOrAddToCart}
+              disabled={!canProceed()}
+              className="w-full h-14 text-lg font-semibold justify-between px-6"
+            >
+              <span>
+                {isLastStep || selectedItem.options.length === 0
+                  ? "Add to Cart"
+                  : "Next"}
+              </span>
+              <span className="font-bold">
+                {currencySymbol}
+                {(calculateItemPrice(selectedItem, selectedOptions) *
+                  (isLastStep ? quantity : 1)).toFixed(2)}
+              </span>
+            </Button>
+          </div>
+        )
+        : (
+          cartItems.length > 0 && (
+            <div className="sticky bottom-0 left-0 right-0 bg-white border-t px-6 py-4 space-y-4">
+              {(
+                <div>
+                  <Label className="text-sm font-medium">
+                    Special Instructions
+                  </Label>
+                  <Textarea
+                    placeholder="Any special requests..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={3}
+                    className="mt-2"
+                  />
+                  {/* Discount */}
+                 <Label className="text-sm font-medium mt-4">
+        Discount Code
+      </Label>
+      <Input
+        type="number"
+        placeholder="Enter discount code"
+        value={discount}
+        onChange={(e) => {
+          const val = Number(e.target.value);
+          setDiscount(isNaN(val) ? 0 : val);
+        }}
+        className="mt-2"
+      />
+                </div>
+              )}
+
+              <Separator />
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-semibold">Total</span>
+                <span className="text-xl font-bold text-primary">
+                  {currencySymbol}
+                  {totalAmount.toFixed(2)}
+                </span>
+              </div>
+              <Button
+                onClick={() => setShowConfirmDialog(true)}
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-10 px-4 w-full bg-primary hover:bg-primary/90 text-white rounded-xl py-3 text-lg font-semibold"
+              >
+                Confirm Order
+              </Button>
+            </div>
+          )
+        )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 h-screen overflow-hidden">
       <ResizableLayout sidebar={sidebarContent}>{mainContent}</ResizableLayout>
 
-      {/* Item Modal */}
-      <Dialog open={false} onOpenChange={(e) => {}}>
-        <DialogContent className="max-w-2xl">
-          {selectedItem && (
-            <>
-              <DialogHeader>
-                <div className="flex items-start gap-4">
-                  <img
-                    src={selectedItem.photoUrl || "/placeholder.png"}
-                    alt={selectedItem.name}
-                    className="w-24 h-24 rounded-lg object-cover"
-                  />
-                  <div>
-                    <DialogTitle className="text-xl">
-                      {selectedItem.name}
-                    </DialogTitle>
-                    <DialogDescription className="mt-2">
-                      {selectedItem.description}
-                    </DialogDescription>
-                    <Badge className="mt-2">
-                      £{selectedItem.price.toFixed(2)}
-                    </Badge>
-                  </div>
-                </div>
-              </DialogHeader>
-
-              <div className="py-4">
-                {selectedItem.options.length === 0
-                  ? (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground">
-                        Ready to add to cart!
-                      </p>
-                    </div>
-                  )
-                  : (
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold">
-                          {currentOption?.name}
-                          {currentOption?.required && (
-                            <span className="text-destructive ml-1">*</span>
-                          )}
-                        </h3>
-                        <Badge variant="outline">
-                          {currentOptionIndex + 1} of{" "}
-                          {selectedItem.options.length}
-                        </Badge>
-                      </div>
-
-                      {/* Scrollable options section with limited height */}
-                      <ScrollArea className="h-64 pr-4">
-                        <div className="space-y-3">
-                          {currentOption?.type === "radio"
-                            ? (
-                              <RadioGroup
-                                value={selectedOptions[currentOption._id]
-                                  ?.[0] || ""}
-                                onValueChange={(value) =>
-                                  handleOptionChange(
-                                    currentOption._id,
-                                    value,
-                                    true,
-                                  )}
-                              >
-                                {currentOption.choices?.map((choice) => (
-                                  <div
-                                    key={choice._id}
-                                    className="flex items-center space-x-3 p-3 rounded-lg border"
-                                  >
-                                    <RadioGroupItem
-                                      value={choice._id}
-                                      id={choice._id}
-                                    />
-                                    <Label
-                                      htmlFor={choice._id}
-                                      className="flex-1 cursor-pointer"
-                                    >
-                                      <div className="flex justify-between items-center">
-                                        <span>{choice.name}</span>
-                                        {choice.price > 0 && (
-                                          <span className="text-primary font-medium">
-                                            £{choice.price.toFixed(2)}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </Label>
-                                  </div>
-                                ))}
-                              </RadioGroup>
-                            )
-                            : (
-                              <div className="space-y-3">
-                                {currentOption?.choices?.map((choice) => {
-                                  const isSelected =
-                                    selectedOptions[currentOption._id]
-                                      ?.includes(
-                                        choice._id,
-                                      ) || false;
-                                  return (
-                                    <div
-                                      key={choice._id}
-                                      className="flex items-center space-x-3 p-3 rounded-lg border"
-                                    >
-                                      <Checkbox
-                                        id={choice._id}
-                                        checked={isSelected}
-                                        onCheckedChange={(checked) =>
-                                          handleOptionChange(
-                                            currentOption._id,
-                                            choice._id,
-                                            !!checked,
-                                          )}
-                                      />
-                                      <Label
-                                        htmlFor={choice._id}
-                                        className="flex-1 cursor-pointer"
-                                      >
-                                        <div className="flex justify-between items-center w-full">
-                                          <span className="w-72">
-                                            {choice.name}
-                                          </span>
-                                          {choice.price > 0 && (
-                                            <span className="text-primary font-medium">
-                                              £{choice.price.toFixed(2)}
-                                            </span>
-                                          )}
-                                        </div>
-                                      </Label>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                        </div>
-                      </ScrollArea>
-                    </div>
-                  )}
-
-                {(isLastStep || selectedItem.options.length === 0) && (
-                  <div className="mt-6 pt-6 border-t">
-                    <div className="flex items-center justify-center space-x-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={decQty}
-                        className="h-10 w-10 p-0"
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                      <span className="text-xl font-bold min-w-[3rem] text-center">
-                        {quantity}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={incQty}
-                        className="h-10 w-10 p-0"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <DialogFooter>
-                <Button
-                  onClick={() => {
-                    if (isLastStep || selectedItem.options.length === 0) {
-                      nextOrAddToCart();
-                    } else {
-                      nextStep();
-                    }
-                  }}
-                  disabled={!canProceed()}
-                  className="w-full"
-                  size="lg"
-                >
-                  <span>
-                    {isLastStep || selectedItem.options.length === 0
-                      ? "Add to Cart"
-                      : "Next"}
-                  </span>
-                  <span className="ml-2 font-bold">
-                    £{(
-                      calculateItemPrice(
-                        selectedItem,
-                        selectedOptions,
-                      ) * quantity
-                    ).toFixed(2)}
-                  </span>
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Order Note Dialog - for pickup orders */}
+      {isPickupOrder && (
+        <Dialog open={showNoteDialog} onOpenChange={setShowNoteDialog}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Add Note to Order</DialogTitle>
+              <DialogDescription>
+                Add any special instructions or notes for your order.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Textarea
+                placeholder="E.g., Delivery instructions, allergies, special requests..."
+                value={orderNote}
+                onChange={(e) =>
+                  setOrderNote(e.target.value)}
+                className="min-h-[120px]"
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={() => setShowNoteDialog(false)}
+              >
+                Save Note
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Confirm Order Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
@@ -820,44 +931,77 @@ export default function Menu() {
           <DialogHeader>
             <DialogTitle>Confirm Order</DialogTitle>
             <DialogDescription>
-              {orderType === "pickup"
-                ? "Pickup order"
-                : `Table ${selectedTable}`}
+              {isPickupOrder ? "Pickup order" : `Table ${selectedTable}`}
             </DialogDescription>
           </DialogHeader>
 
           <ScrollArea className="max-h-96">
             <div className="space-y-4">
-              {cartItems.map((cartItem) => (
+              {cartItems.map((cartItem: any) => (
                 <div
-                  key={cartItem.menuItem._id}
+                  key={isPickupOrder
+                    ? cartItem.optionsHash
+                    : cartItem.menuItem._id}
                   className="flex justify-between items-center p-3 bg-slate-50 rounded-lg"
                 >
                   <div>
-                    <p className="font-medium">{cartItem.menuItem.name}</p>
+                    <p className="font-medium">
+                      {isPickupOrder
+                        ? cartItem.menuItem.name
+                        : cartItem.menuItem.name}
+                    </p>
                     <p className="text-sm text-muted-foreground">
                       Qty: {cartItem.quantity}
                     </p>
+                    {/* Show selected options for pickup orders */}
+                    {isPickupOrder && cartItem.selectedOptions?.length > 0 && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {cartItem.selectedOptions.map((option: any) => {
+                          const optionData = cartItem.menuItem.options?.find((
+                            opt: any,
+                          ) => opt._id === option.optionId);
+                          if (!optionData) return null;
+
+                          const choiceNames = option.choiceIds.map(
+                            (choiceId: string) => {
+                              const choice = optionData.choices?.find((
+                                c: any,
+                              ) => c._id === choiceId);
+                              return choice?.name;
+                            },
+                          ).filter(Boolean);
+
+                          return choiceNames.length > 0
+                            ? `${optionData.name}: ${choiceNames.join(", ")}`
+                            : null;
+                        }).filter(Boolean).join(" | ")}
+                      </div>
+                    )}
                   </div>
                   <p className="font-bold text-primary">
-                    £{cartItem.totalPrice.toFixed(2)}
+                    {currencySymbol}
+                    {cartItem.totalPrice.toFixed(2)}
                   </p>
                 </div>
               ))}
             </div>
           </ScrollArea>
 
-          {notes && (
+          {/* Show notes */}
+          {((isPickupOrder && orderNote) || (!isPickupOrder && notes)) && (
             <div className="mt-4 p-3 bg-slate-50 rounded-lg">
               <p className="text-sm font-medium mb-1">Special Instructions:</p>
-              <p className="text-sm text-muted-foreground">{notes}</p>
+              <p className="text-sm text-muted-foreground">
+                {isPickupOrder ? orderNote : notes}
+              </p>
             </div>
           )}
 
           <div className="flex justify-between items-center pt-4 border-t">
             <span className="text-lg font-semibold">Total</span>
             <span className="text-xl font-bold text-primary">
-              £{totalAmount.toFixed(2)}
+              {currencySymbol}
+              {totalAmount.toFixed(2)}
             </span>
           </div>
 
@@ -868,12 +1012,7 @@ export default function Menu() {
             >
               Cancel
             </Button>
-            <Button
-              onClick={() => {
-                setShowConfirmDialog(false);
-                cartCheckout.mutate({ tableId: tableId || "", note: notes });
-              }}
-            >
+            <Button onClick={handleCheckout}>
               <Check className="w-4 h-4 mr-2" />
               Confirm Order
             </Button>

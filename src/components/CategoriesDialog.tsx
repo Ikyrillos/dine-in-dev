@@ -1,7 +1,7 @@
 // components/CategoryChooserDialog.tsx
 "use client";
 
-import { Menu as MenuIcon } from "lucide-react";
+import { Menu as MenuIcon, XIcon } from "lucide-react";
 import * as React from "react";
 
 import {
@@ -64,8 +64,15 @@ const CategoryChooserDialog: React.FC<CategoryChooserDialogProps> = ({
 
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Choose a category</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <AlertDialogTitle>Choose a category</AlertDialogTitle>
+              <AlertDialogDescription>{description}</AlertDialogDescription>
+            </div>
+            <span onClick={() => setOpen(false)} className="cursor-pointer">
+              <XIcon className="h-4 w-4" />
+            </span>
+          </div>
         </AlertDialogHeader>
 
         {/* Choices */}

@@ -419,14 +419,12 @@ export default function Menu() {
       {/* Categories */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex-shrink-0">
         <ScrollArea className="w-full whitespace-nowrap">
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             <CategoryChooserDialog
               categories={categories}
               selectedCategory={selectedCategory}
               onSelect={(value) => setSelectedCategory(value)}
-              triggerLabel={selectedCategory
-                ? "Change Category"
-                : "Choose Category"}
+              triggerLabel="Categories"
             />
             <Button
               variant={selectedCategory === null
@@ -446,7 +444,7 @@ export default function Menu() {
                 onClick={() => setSelectedCategory(String(category.id))}
                 className="min-h-12 h-auto rounded-lg p-3"
               >
-                <span className="break-words text-left">{category.name}</span>
+                <span className="truncate">{category.name}</span>
               </Button>
             ))}
           </div>

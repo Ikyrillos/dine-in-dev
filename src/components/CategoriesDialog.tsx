@@ -55,11 +55,11 @@ const CategoryChooserDialog: React.FC<CategoryChooserDialogProps> = ({
       <AlertDialogTrigger asChild>
         <Button
           variant="outline"
-          className="min-h-12 h-auto rounded-lg p-3"
+          className="min-h-12 h-auto rounded-lg p-3 truncate"
           disabled={disabled}
         >
           <MenuIcon className="h-4 w-4 mr-2" />
-          {triggerLabel}
+          <span className="truncate">{triggerLabel}</span>
         </Button>
       </AlertDialogTrigger>
 
@@ -83,7 +83,7 @@ const CategoryChooserDialog: React.FC<CategoryChooserDialogProps> = ({
           {/* Dynamic Categories */}
           <Button
             variant={selectedCategory === null ? "default" : "outline"}
-            onClick={() => onSelect(null)}
+            onClick={() => {onSelect(null); setOpen(false);}}
           >
             <span className="break-words text-left">All</span>
           </Button>
@@ -97,7 +97,7 @@ const CategoryChooserDialog: React.FC<CategoryChooserDialogProps> = ({
                 onClick={() => handleSelect(String(category.id))}
                 className="whitespace-nowrap"
               >
-                {category.name}
+                <span className="truncate">{category.name}</span>
               </Button>
             );
           })}

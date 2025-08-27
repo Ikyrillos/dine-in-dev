@@ -12,6 +12,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogOverlay,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
@@ -62,6 +63,8 @@ const CategoryChooserDialog: React.FC<CategoryChooserDialogProps> = ({
         </Button>
       </AlertDialogTrigger>
 
+      <AlertDialogOverlay onClick={() => setOpen(false)} />
+      
       <AlertDialogContent>
         <AlertDialogHeader>
           <div className="flex justify-between items-center">

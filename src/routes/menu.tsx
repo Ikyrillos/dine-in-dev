@@ -20,11 +20,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { useCartOperations, useCheckoutCart } from "@/core/hooks/cart_hooks";
+import { useCartOperations } from "@/core/hooks/cart_hooks";
 import { useGetMenuCategories } from "@/core/hooks/get-categories-hooks";
 import { useGetMenuItems } from "@/core/hooks/get-menu-items";
 import type { CartItem } from "@/core/models/dtos/cart-dtos";
 import type { IMenuItem } from "@/core/models/IMenuItem";
+import { oldCartApi } from "@/core/repositories/cart_repository";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -82,6 +83,7 @@ export default function Menu() {
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [orderNote, setOrderNote] = useState("");
   const [promoCode, setPromoCode] = useState("");
+  console.log(setPromoCode);
   const [discount, setDiscount] = useState(0);
 
   // Check if this is a pickup order (no tableId)
@@ -97,7 +99,6 @@ export default function Menu() {
 
   // Conditional cart hooks based on order type
   const tableCartOps = useCartOperations(tableId ?? "");
-  const tableCartCheckout = useCheckoutCart();
 
   // Pickup cart hooks (only used for pickup orders)
   const pickupCart = useGetCart();
@@ -371,7 +372,7 @@ export default function Menu() {
       });
     } else {
       // Table checkout
-      tableCartCheckout.mutate({ tableId: tableId || "", note: notes });
+     oldCartApi.printPosOrder(tableId || "");
     }
     setShowConfirmDialog(false);
   };

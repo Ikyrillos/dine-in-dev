@@ -34,6 +34,14 @@ class CartRepository {
             },
         });
     }
+
+    // Post /tables/:id/print-pos-order
+    async printPosOrder(tableId: string): Promise<unknown> {
+        return makeRequest<void, unknown>({
+            method: "POST",
+            url: `${BASE_URL}/tables/${tableId}/print-pos-order`,
+        });
+    }
     /**
      * Add item to table cart
      * @param tableId Table ID
@@ -106,4 +114,4 @@ class CartRepository {
     }
 }
 
-export const cartApi = new CartRepository();
+export const oldCartApi = new CartRepository();

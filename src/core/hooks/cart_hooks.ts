@@ -5,7 +5,7 @@ import type {
     Cart,
     UpdateCartItemDto,
 } from "../models/dtos/cart-dtos";
-import { cartApi } from "../repositories/cart_repository";
+import { oldCartApi } from "../repositories/cart_repository";
 
 // Query Keys
 export const CART_QUERY_KEYS = {
@@ -20,7 +20,7 @@ export const useGetTableCart = (tableId: string) => {
     return useQuery({
         queryKey: CART_QUERY_KEYS.cart(tableId),
         queryFn: async () => {
-            const response = await cartApi.getTable(tableId);
+            const response = await oldCartApi.getTable(tableId);
             // Handle different possible response structures
             if (response?.data) {
                 return response.data;
@@ -40,7 +40,7 @@ export const useAddItemToCart = () => {
     return useMutation({
         mutationFn: (
             { tableId, data }: { tableId: string; data: AddItemToCartDto },
-        ) => cartApi.addItemToTable(tableId, data),
+        ) => oldCartApi.addItemToTable(tableId, data),
         onSuccess: (response, { tableId }) => {
             // Update the cart data in cache with the response
             queryClient.setQueryData(
@@ -69,7 +69,7 @@ export const useCheckoutCart = () => {
             note?: string;
             promoCode?: string;
         }
-        ) => cartApi.checkoutCart(tableId, note, promoCode),
+        ) => oldCartApi.checkoutCart(tableId, note, promoCode),
         onSuccess: (_response, data) => {
             // Invalidate the cart query to ensure it refetch
             queryClient.invalidateQueries({
@@ -93,7 +93,7 @@ export const useUpdateCartItem = () => {
             optionsHash: string;
             data: UpdateCartItemDto;
             tableId: string;
-        }) => cartApi.updateCartItem(optionsHash, data, tableId),
+        }) => oldCartApi.updateCartItem(optionsHash, data, tableId),
         onSuccess: (response, { tableId }) => {
             // Update the cart data in cache with the response
             queryClient.setQueryData(
@@ -120,7 +120,7 @@ export const useRemoveCartItem = () => {
     return useMutation({
         mutationFn: (
             { tableId, optionsHash }: { tableId: string; optionsHash: string },
-        ) => cartApi.removeCartItem(tableId, optionsHash),
+        ) => oldCartApi.removeCartItem(tableId, optionsHash),
         onSuccess: (response, { tableId }) => {
             // Update the cart data in cache with the response
             queryClient.setQueryData(
@@ -146,7 +146,7 @@ export const useClearCart = () => {
     const navigate = useNavigate();
 
     return useMutation({
-        mutationFn: (tableId: string) => cartApi.clearCart(tableId),
+        mutationFn: (tableId: string) => oldCartApi.clearCart(tableId),
         onSuccess: (_response, tableId) => {
             // Invalidate the cart query to ensure it refetch
             queryClient.invalidateQueries({

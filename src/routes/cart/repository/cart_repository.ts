@@ -5,13 +5,24 @@ import type { ICart } from "../models/cart-item-model";
 
 
 export interface CheckoutResponse {
-    id: string;
-    object: string;
-    // ... include any other fields you need
-    url: string; // the URL to redirect to
-    message: string;
-    error?: string;
+    _id: string;
+    user: string;
+    restaurant: string;
+    orderDate: string; // ISO Date string
+    orderNumber: string;
+    totalAmount: number;
+    subTotal: number;
+    tax: number;
+    note: string;
+    source: "web" | "mobile" | string; // extendable
+    shippingCost: number;
+    items: any[];
+    status: "PAID" | "PENDING" | "CANCELLED" | string; // extendable
+    deleted: boolean;
+    createdAt: string; // ISO Date string
+    updatedAt: string; // ISO Date string
 }
+
 
 export interface CheckoutData {
     successUrl: string;
@@ -83,14 +94,14 @@ class CartRepository {
   async  postCheckout({ successUrl, failUrl, addressId, note, promoCode }: CheckoutData): Promise<CheckoutResponse> {
         const { data } = await makeRequest<CheckoutData, CheckoutResponse>({
             method: "POST",
-            url: `${BASE_URL}/restaurant-cart/checkout`,
+            url: `${BASE_URL}/restaurant-cart/checkout/pickup`,
             data: {
                 successUrl,
                 failUrl,
                 addressId: addressId ? addressId : undefined,
                 note,
                 promoCode: promoCode,
-                source: 'web'
+                source: 'Dine-in',
             },
         });
         return data;

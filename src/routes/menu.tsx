@@ -371,7 +371,7 @@ useEffect(() => {
         promoCode: promoCode,
         source: "Dine-in",
       }).then((response) => {
-        if (response.url) {
+        if (response._id) {
           clearPickupCart.mutate();
         }
         

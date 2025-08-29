@@ -243,9 +243,9 @@ export default function TableSelection() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <h1 className="text-3xl font-bold text-primary">Tawila</h1>
+                <h1 className="text-3xl font-bold text-primary">{ restaurant?.data?.name}</h1>
               </div>
-              <div className="mt-6  h-20">
+              <div className=" h-20">
                 <div className="px-4">
                   <h3 className="text-sm font-semibold text-gray-700 mb-3">
                     Note:
@@ -375,7 +375,7 @@ export default function TableSelection() {
             {selectedTable
               ? (
                 <div className="h-full flex flex-col">
-                  <div className="p-6 border-b border-gray-200">
+                  <div className="p-4 border-b border-gray-200">
                     <div className="flex items-center justify-between">
                       <h2 className="text-xl font-bold text-gray-900">
                         {selectedTable.name}

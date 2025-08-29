@@ -34,11 +34,7 @@ import { useGetRestaurantById } from "@/core/hooks/use-restaurant-hooks";
 import { useGetTables } from "@/core/hooks/use-tables-hooks";
 import type { Table } from "@/core/models/TableModel";
 
-import {
-  ArrowLeft,
-  Banknote,
-  CreditCard
-} from "lucide-react";
+import { ArrowLeft, Banknote, CreditCard } from "lucide-react";
 import { getSelectedChoiceNamesForItem } from "./cart/models/cart-item-model";
 
 export const Route = createFileRoute("/tables")({
@@ -151,7 +147,10 @@ export default function TableSelection() {
 
   const handleTableClick = (table: Table) => {
     if (table.status === "free") {
-      navigate({ to: "/menu", search: { tableId: table.id, name: table.name } });
+      navigate({
+        to: "/menu",
+        search: { tableId: table.id, name: table.name },
+      });
     } else {
       setSelectedTable(table);
       setShowPaymentOptions(false);
@@ -170,13 +169,17 @@ export default function TableSelection() {
       // Process cash payment
       handleConfirmOrder(method);
     } else if (method === "card") {
-     handleConfirmOrder(method);
+      handleConfirmOrder(method);
     }
   };
 
   const handleConfirmOrder = (paymentMethod: "cash" | "card") => {
     if (!selectedTable) return;
-    cartCheckout.mutate({ tableId: selectedTable.id, note: orderNotes, paymentMethod: paymentMethod });
+    cartCheckout.mutate({
+      tableId: selectedTable.id,
+      note: orderNotes,
+      paymentMethod: paymentMethod,
+    });
     setShowPaymentOptions(false);
     setOrderNotes("");
     setTimeout(() => {
@@ -191,7 +194,9 @@ export default function TableSelection() {
   if (isRestaurantLoading || isTablesLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-lg text-muted-foreground">Loading restaurant data...</p>
+        <p className="text-lg text-muted-foreground">
+          Loading restaurant data...
+        </p>
       </div>
     );
   }
@@ -200,14 +205,21 @@ export default function TableSelection() {
     <div className="min-h-screen bg-white">
       <ResizablePanelGroup direction="horizontal" className="min-h-screen">
         {/* MAIN */}
-        <ResizablePanel defaultSize={100 - sidebarSize} minSize={60} maxSize={85}>
+        <ResizablePanel
+          defaultSize={100 - sidebarSize}
+          minSize={60}
+          maxSize={85}
+        >
           {/* HEADER (exact look) */}
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between max-w-7xl mx-auto">
               <div className="flex items-center space-x-4">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-12 w-12 rounded-full p-0">
+                    <Button
+                      variant="ghost"
+                      className="relative h-12 w-12 rounded-full p-0"
+                    >
                       <Avatar className="h-12 w-12">
                         <AvatarImage src={restaurantData?.logo} alt="Profile" />
                         <AvatarFallback className="bg-slate-100" />
@@ -232,6 +244,32 @@ export default function TableSelection() {
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <h1 className="text-3xl font-bold text-primary">Tawila</h1>
+              </div>
+              <div className="mt-6  h-20">
+                <div className="px-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                    Note:
+                  </h3>
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-5 h-5 rounded-md bg-primary">
+                      </span>
+                      <span>Occupied</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="w-5 h-5 rounded-md border border-[#010101] bg-white">
+                      </span>
+                      <span>Free</span>
+                    </div>
+                    {
+                      /* <div className="flex items-center space-x-2">
+                          <span className="w-5 h-5 rounded-md bg-[#d9d9d9]">
+                          </span>
+                          <span>Reserved</span>
+                        </div> */
+                    }
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -275,9 +313,11 @@ export default function TableSelection() {
                       <Card
                         key={table.id}
                         onClick={() => handleTableClick(table)}
-                        className={`cursor-pointer rounded-2xl overflow-hidden h-36 flex ${getTableColor(
-                          table.status,
-                        )} items-center justify-center transition-colors`}
+                        className={`cursor-pointer rounded-2xl overflow-hidden h-36 flex ${
+                          getTableColor(
+                            table.status,
+                          )
+                        } items-center justify-center transition-colors`}
                       >
                         <CardContent className="p-0 text-center w-full h-full flex items-center justify-center">
                           <h3 className="text-lg md:text-xl font-normal">
@@ -294,9 +334,12 @@ export default function TableSelection() {
                 <div className="pt-6">
                   <div className="text-center py-10">
                     <div className="max-w-md mx-auto bg-gray-50 p-8 rounded-xl shadow-sm">
-                      <h2 className="text-3xl font-bold text-gray-900 mb-4">Pickup Order</h2>
+                      <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                        Pickup Order
+                      </h2>
                       <p className="text-gray-600 mb-8">
-                        Ready to order for pickup? Click below to go straight to the menu.
+                        Ready to order for pickup? Click below to go straight to
+                        the menu.
                       </p>
                       <Button
                         onClick={handlePickupOrder}
@@ -329,137 +372,168 @@ export default function TableSelection() {
             className="h-full bg-white border-l border-gray-200 shadow-lg"
             style={{ width: `${sidebarSize}vw` }}
           >
-            {selectedTable ? (
-              <div className="h-full flex flex-col">
-                <div className="p-6 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-gray-900">{selectedTable.name}</h2>
-                    {getStatusBadge(selectedTable.status)}
-                  </div>
-                  <p className="text-sm text-gray-500 mt-1 capitalize">{selectedTable.status}</p>
-                </div>
-
-                <ScrollArea className="flex-1">
-                  <div className="p-6">
-                    {selectedTable.status === "occupied" && (cartItems?.length ?? 0) > 0 && (
-                      <Button
-                        variant="outline"
-                        className="mb-4 w-full"
-                        onClick={() => {
-                          if (confirm("Are you sure you want to clear this table?")) {
-                            clearCartMutation.mutate(selectedTable.id);
-                          }
-                        }}
-                      >
-                        Clear Table
-                      </Button>
-                    )}
-
-                    {showPaymentOptions ? (
-                      <div>
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start h-12"
-                          onClick={() => setShowPaymentOptions(false)}
-                        >
-                          <ArrowLeft className="mr-2 h-4 w-4" />
-                          Back
-                        </Button>
-                        <h3 className="font-semibold text-gray-900 text-lg my-4 text-center">
-                          Payment
-                        </h3>
-                        
-                        {/* Order Notes Section */}
-                        <div className="mb-6">
-                          <Label htmlFor="orderNotes" className="text-sm font-medium">
-                            Special Instructions
-                          </Label>
-                          <Textarea
-                            id="orderNotes"
-                            placeholder="Any special requests..."
-                            value={orderNotes}
-                            onChange={(e) => setOrderNotes(e.target.value)}
-                            className="mt-2"
-                            rows={3}
-                          />
-                        </div>
-
-                        {/* Payment Method Buttons */}
-                        <div className="space-y-3">
-                          <Button
-                            variant="outline"
-                            className="w-full justify-start h-14 text-base font-medium"
-                            onClick={() => handlePaymentMethodSelect("card")}
-                          >
-                            <CreditCard className="mr-3 h-5 w-5" />
-                            Card
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="w-full justify-start h-14 text-base font-medium"
-                            onClick={() => handlePaymentMethodSelect("cash")}
-                          >
-                            <Banknote className="mr-3 h-5 w-5" />
-                            Cash
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="">
-                        {cartItems.map((cartItem) => (
-                          <Card key={cartItem.optionsHash} className="border border-gray-200 mb-3">
-                            <CardContent className="p-3">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <p className="font-medium text-sm">
-                                    {cartItem.menuItem?.name ?? "Item"}
-                                  </p>
-                                  <p className="text-xs text-gray-500">Qty: {cartItem.quantity}</p>
-                                  <p
-                                  className="text-xs text-gray-600 truncate w-64"
-                                  >{getSelectedChoiceNamesForItem(cartItem).join(", ")}</p>
-                                </div>
-                                <div className="flex items-center">
-                                  <span className="font-bold text-primary">
-                                    £{Number(cartItem.totalPrice).toFixed(2)}
-                                  </span>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-
-                <div className="border-t border-gray-200">
-                  {(selectedTable.status === "reserved" ||
-                    (selectedTable.status === "occupied" && cartItems.length > 0)) && (
-                    <div className="p-6 border-b border-gray-200">
-                      <div className="flex justify-between items-center">
-                        <span className="text-lg font-semibold text-gray-900">Total</span>
-                        <span className="text-xl font-bold text-primary">
-                          £{totalAmount.toFixed(2)}
-                        </span>
-                      </div>
+            {selectedTable
+              ? (
+                <div className="h-full flex flex-col">
+                  <div className="p-6 border-b border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xl font-bold text-gray-900">
+                        {selectedTable.name}
+                      </h2>
+                      {getStatusBadge(selectedTable.status)}
                     </div>
-                  )}
+                    <p className="text-sm text-gray-500 mt-1 capitalize">
+                      {selectedTable.status}
+                    </p>
+                  </div>
 
-                  {!showPaymentOptions && (
-                    <div className="p-6 space-y-3">
-                      {selectedTable.status !== "reserved" && (
+                  <ScrollArea className="flex-1">
+                    <div className="p-6">
+                      {selectedTable.status === "occupied" &&
+                        (cartItems?.length ?? 0) > 0 && (
                         <Button
-                          onClick={() => handleOrderForTable(selectedTable.id)}
-                          className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl h-14 text-lg font-semibold"
+                          variant="outline"
+                          className="mb-4 w-full"
+                          onClick={() => {
+                            if (
+                              confirm(
+                                "Are you sure you want to clear this table?",
+                              )
+                            ) {
+                              clearCartMutation.mutate(selectedTable.id);
+                            }
+                          }}
                         >
-                          {selectedTable.status === "occupied" ? "Order more for" : "Order for"}{" "}
-                          {selectedTable.name}
+                          Clear Table
                         </Button>
                       )}
 
-                      {(selectedTable.status === "occupied" || selectedTable.status === "reserved") &&
-                        cartItems.length > 0 && (
+                      {showPaymentOptions
+                        ? (
+                          <div>
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start h-12"
+                              onClick={() => setShowPaymentOptions(false)}
+                            >
+                              <ArrowLeft className="mr-2 h-4 w-4" />
+                              Back
+                            </Button>
+                            <h3 className="font-semibold text-gray-900 text-lg my-4 text-center">
+                              Payment
+                            </h3>
+
+                            {/* Order Notes Section */}
+                            <div className="mb-6">
+                              <Label
+                                htmlFor="orderNotes"
+                                className="text-sm font-medium"
+                              >
+                                Special Instructions
+                              </Label>
+                              <Textarea
+                                id="orderNotes"
+                                placeholder="Any special requests..."
+                                value={orderNotes}
+                                onChange={(e) => setOrderNotes(e.target.value)}
+                                className="mt-2"
+                                rows={3}
+                              />
+                            </div>
+
+                            {/* Payment Method Buttons */}
+                            <div className="space-y-3">
+                              <Button
+                                variant="outline"
+                                className="w-full justify-start h-14 text-base font-medium"
+                                onClick={() =>
+                                  handlePaymentMethodSelect("card")}
+                              >
+                                <CreditCard className="mr-3 h-5 w-5" />
+                                Card
+                              </Button>
+                              <Button
+                                variant="outline"
+                                className="w-full justify-start h-14 text-base font-medium"
+                                onClick={() =>
+                                  handlePaymentMethodSelect("cash")}
+                              >
+                                <Banknote className="mr-3 h-5 w-5" />
+                                Cash
+                              </Button>
+                            </div>
+                          </div>
+                        )
+                        : (
+                          <div className="">
+                            {cartItems.map((cartItem) => (
+                              <Card
+                                key={cartItem.optionsHash}
+                                className="border border-gray-200 mb-3"
+                              >
+                                <CardContent className="p-3">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <p className="font-medium text-sm">
+                                        {cartItem.menuItem?.name ?? "Item"}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        Qty: {cartItem.quantity}
+                                      </p>
+                                      <p className="text-xs text-gray-600 truncate w-64">
+                                        {getSelectedChoiceNamesForItem(cartItem)
+                                          .join(", ")}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center">
+                                      <span className="font-bold text-primary">
+                                        £{Number(cartItem.totalPrice).toFixed(
+                                          2,
+                                        )}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        )}
+                    </div>
+                  </ScrollArea>
+
+                  <div className="border-t border-gray-200">
+                    {(selectedTable.status === "reserved" ||
+                      (selectedTable.status === "occupied" &&
+                        cartItems.length > 0)) && (
+                      <div className="p-6 border-b border-gray-200">
+                        <div className="flex justify-between items-center">
+                          <span className="text-lg font-semibold text-gray-900">
+                            Total
+                          </span>
+                          <span className="text-xl font-bold text-primary">
+                            £{totalAmount.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {!showPaymentOptions && (
+                      <div className="p-6 space-y-3">
+                        {selectedTable.status !== "reserved" && (
+                          <Button
+                            onClick={() =>
+                              handleOrderForTable(selectedTable.id)}
+                            className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl h-14 text-lg font-semibold"
+                          >
+                            {selectedTable.status === "occupied"
+                              ? "Order more for"
+                              : "Order for"} {selectedTable.name}
+                          </Button>
+                        )}
+
+                        {(selectedTable.status === "occupied" ||
+                          selectedTable.status === "reserved") &&
+                          cartItems.length > 0 && (
                           <Button
                             onClick={() => setShowPaymentOptions(true)}
                             variant="outline"
@@ -468,16 +542,21 @@ export default function TableSelection() {
                             Payment
                           </Button>
                         )}
-                    </div>
-                  )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Table Details</h2>
-                <p className="text-gray-500">Select a table to view details</p>
-              </div>
-            )}
+              )
+              : (
+                <div className="p-6">
+                  <h2 className="text-xl font-bold text-gray-900 mb-2">
+                    Table Details
+                  </h2>
+                  <p className="text-gray-500">
+                    Select a table to view details
+                  </p>
+                </div>
+              )}
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>

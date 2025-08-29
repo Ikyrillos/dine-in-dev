@@ -39,6 +39,7 @@ import {
   Banknote,
   CreditCard
 } from "lucide-react";
+import { getSelectedChoiceNamesForItem } from "./cart/models/cart-item-model";
 
 export const Route = createFileRoute("/tables")({
   component: TableSelection,
@@ -167,15 +168,15 @@ export default function TableSelection() {
   const handlePaymentMethodSelect = (method: string) => {
     if (method === "cash") {
       // Process cash payment
-      handleConfirmOrder();
+      handleConfirmOrder(method);
     } else if (method === "card") {
-      alert("Card payment not implemented yet");
+     handleConfirmOrder(method);
     }
   };
 
-  const handleConfirmOrder = () => {
+  const handleConfirmOrder = (paymentMethod: "cash" | "card") => {
     if (!selectedTable) return;
-    cartCheckout.mutate({ tableId: selectedTable.id, note: orderNotes });
+    cartCheckout.mutate({ tableId: selectedTable.id, note: orderNotes, paymentMethod: paymentMethod });
     setShowPaymentOptions(false);
     setOrderNotes("");
     setTimeout(() => {
@@ -414,6 +415,9 @@ export default function TableSelection() {
                                     {cartItem.menuItem?.name ?? "Item"}
                                   </p>
                                   <p className="text-xs text-gray-500">Qty: {cartItem.quantity}</p>
+                                  <p
+                                  className="text-xs text-gray-600 truncate w-64"
+                                  >{getSelectedChoiceNamesForItem(cartItem).join(", ")}</p>
                                 </div>
                                 <div className="flex items-center">
                                   <span className="font-bold text-primary">

@@ -13,6 +13,8 @@ interface CheckoutRequest {
     source: string;
     successUrl?: string;
     failUrl?: string;
+    paymentMethod: string;
+
 }
 
 class CartRepository {
@@ -20,6 +22,7 @@ class CartRepository {
         tableId: string,
         note?: string,
         promoCode?: string,
+        paymentMethod?: string,
     ): Promise<unknown> {
         return makeRequest<CheckoutRequest, unknown>({
             method: "POST",
@@ -31,6 +34,7 @@ class CartRepository {
                 source: "Dine-in",
                 successUrl: "https://www.secondserving.uk/",
                 failUrl: "https://www.secondserving.uk/",
+                paymentMethod: paymentMethod || "cash",
             },
         });
     }

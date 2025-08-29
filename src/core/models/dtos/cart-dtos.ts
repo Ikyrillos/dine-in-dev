@@ -1,3 +1,5 @@
+import type { ICartItem } from "@/routes/cart/models/cart-item-model";
+import type { IOption } from "../IMenuItem";
 
 // ✅ make types match API response
 export interface CartItemOption {
@@ -11,7 +13,8 @@ export interface CartItem {
     name: string;
     price: number;
     photoUrl?: string;
-    // add whatever else you actually use (category, description...)
+    options: IOption[];
+
   };
   quantity: number;
   unitPrice: number;
@@ -25,7 +28,7 @@ export interface CartItem {
 export interface Cart {
   _id: string;
   user: string;
-  items: CartItem[];
+  items: ICartItem[];
   totalAmount: number;
   createdAt: string;
   updatedAt: string;
@@ -42,3 +45,4 @@ export interface AddItemToCartDto {
 export interface UpdateCartItemDto {
     quantity: number;
 }
+

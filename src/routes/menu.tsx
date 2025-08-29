@@ -23,7 +23,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCartOperations } from "@/core/hooks/cart_hooks";
 import { useGetMenuCategories } from "@/core/hooks/get-categories-hooks";
 import { useGetMenuItems } from "@/core/hooks/get-menu-items";
-import type { CartItem } from "@/core/models/dtos/cart-dtos";
 import type { IMenuItem } from "@/core/models/IMenuItem";
 import { oldCartApi } from "@/core/repositories/cart_repository";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
@@ -46,6 +45,10 @@ import {
   useRemovePickupCartItem,
   useUpdateCartItemQuantity,
 } from "./cart/hooks/cart-hooks";
+import {
+  getSelectedChoiceNamesForItem,
+  type ICartItem,
+} from "./cart/models/cart-item-model";
 import { cartApi } from "./cart/repository/cart_repository";
 import { useCurrencyStore } from "./cart/stores/currency-store";
 import { useDebounce } from "./cart/stores/use_debounce";
@@ -138,7 +141,7 @@ export default function Menu() {
     if (isPickupOrder) {
       return pickupCart.data?.items || [];
     }
-    return (tableCartOps.cart?.items || []) as CartItem[];
+    return (tableCartOps.cart?.items || []) as ICartItem[];
   }, [isPickupOrder, pickupCart.data?.items, tableCartOps.cart?.items]);
 
   const totalAmount = useMemo(() => {
@@ -372,7 +375,7 @@ export default function Menu() {
       });
     } else {
       // Table checkout
-     oldCartApi.printPosOrder(tableId || "");
+      oldCartApi.printPosOrder(tableId || "");
     }
     setShowConfirmDialog(false);
   };
@@ -428,9 +431,7 @@ export default function Menu() {
               triggerLabel="Categories"
             />
             <Button
-              variant={selectedCategory === null
-                  ? "default"
-                  : "outline"}
+              variant={selectedCategory === null ? "default" : "outline"}
               onClick={() => setSelectedCategory(null)}
               className="min-h-12 h-auto rounded-lg p-3"
             >
@@ -726,6 +727,10 @@ export default function Menu() {
                                       <span className="w-8 text-center">
                                         {item.quantity}
                                       </span>
+                                      <p className="text-xs text-gray-600 truncate w-64">
+                                        {getSelectedChoiceNamesForItem(item)
+                                          .join(", ")}
+                                      </p>
                                       <Button
                                         variant="outline"
                                         size="sm"
@@ -748,7 +753,7 @@ export default function Menu() {
                       )
                       : (
                         // Table cart items
-                        cartItems.map((cartItem: CartItem) => (
+                        cartItems.map((cartItem: ICartItem) => (
                           <Card
                             key={cartItem.optionsHash}
                             className="border-slate-200"
@@ -758,6 +763,7 @@ export default function Menu() {
                                 <h4 className="font-medium">
                                   {cartItem.menuItem.name}
                                 </h4>
+
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -770,6 +776,11 @@ export default function Menu() {
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
+                              <p className="text-sm text-gray-600 truncate w-64">
+                                {getSelectedChoiceNamesForItem(cartItem).join(
+                                  ", ",
+                                )}
+                              </p>
                               <div className="flex justify-between items-center">
                                 <span className="font-bold text-primary">
                                   {currencySymbol}

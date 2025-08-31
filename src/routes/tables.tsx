@@ -1,7 +1,7 @@
 "use client";
 
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -76,8 +76,6 @@ export default function TableSelection() {
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [orderNotes, setOrderNotes] = useState("");
   const [restaurantData, setRestaurantData] = useState<any>(null);
-  const tableRef = useRef(selectedTable);
-
   // toggle state (tab look)
   const [mode, setMode] = useState<"dine-in" | "pickup">("dine-in");
 

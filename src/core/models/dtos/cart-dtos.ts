@@ -29,6 +29,7 @@ export interface Cart {
   _id: string;
   user: string;
   items: ICartItem[];
+  printedItems: ICartItem[];
   totalAmount: number;
   createdAt: string;
   updatedAt: string;

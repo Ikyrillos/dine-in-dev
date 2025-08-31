@@ -54,6 +54,7 @@ import {
 import { cartApi } from "./cart/repository/cart_repository";
 import { useCurrencyStore } from "./cart/stores/currency-store";
 import { useDebounce } from "./cart/stores/use_debounce";
+import { getUnprintedItems } from "./cart/utils/printed-items-util";
 
 // Import pickup cart hooks and utilities
 
@@ -146,7 +147,7 @@ export default function Menu() {
     if (isPickupOrder) {
       return pickupCart.data?.items || [];
     }
-    return (tableCartOps.cart?.items || []) as ICartItem[];
+    return getUnprintedItems(tableCartOps.cart?.items || [], tableCartOps.cart?.printedItems || []) as ICartItem[];
   }, [isPickupOrder, pickupCart.data?.items, tableCartOps.cart?.items]);
 
   const totalAmount = useMemo(() => {

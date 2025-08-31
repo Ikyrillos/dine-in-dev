@@ -29,6 +29,8 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
+  ChevronUp,
   Minus,
   Plus,
   Search,
@@ -83,6 +85,9 @@ export default function Menu() {
   const [selectedOptions, setSelectedOptions] = useState<
     Record<string, string[]>
   >({});
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
+    {},
+  );
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [orderNote, setOrderNote] = useState("");
   const [promoCode, setPromoCode] = useState("");
@@ -375,7 +380,11 @@ export default function Menu() {
       });
     } else {
       // Table checkout
-      oldCartApi.printPosOrder(tableId || "");
+      oldCartApi.printPosOrder(tableId || "").then((response) => {
+        if (response) {
+          navigate({ to: `/tables` });
+        }
+      });
     }
     setShowConfirmDialog(false);
   };
@@ -437,7 +446,7 @@ export default function Menu() {
             >
               <span className="break-words text-left">All</span>
             </Button>
-            {categories?.data.slice(0, 9).map((category) => (
+            {categories?.data.slice(0, 10).map((category) => (
               <Button
                 key={category.id}
                 variant={String(selectedCategory) === String(category.id)
@@ -706,6 +715,10 @@ export default function Menu() {
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
                                   </div>
+                                  <p className="text-xs text-gray-600 truncate w-64">
+                                    {getSelectedChoiceNamesForItem(item)
+                                      .join(", ")}
+                                  </p>
                                   <div className="flex justify-between items-center">
                                     <span className="font-bold text-primary">
                                       {currencySymbol}
@@ -727,10 +740,7 @@ export default function Menu() {
                                       <span className="w-8 text-center">
                                         {item.quantity}
                                       </span>
-                                      <p className="text-xs text-gray-600 truncate w-64">
-                                        {getSelectedChoiceNamesForItem(item)
-                                          .join(", ")}
-                                      </p>
+
                                       <Button
                                         variant="outline"
                                         size="sm"
@@ -776,12 +786,56 @@ export default function Menu() {
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
-                              <p className="text-sm text-gray-600 truncate w-64">
-                                {getSelectedChoiceNamesForItem(cartItem).join(
-                                  ", ",
-                                )}
-                              </p>
-                              <div className="flex justify-between items-center">
+
+                              {/* Expandable Options Section - Only show if there are options */}
+                              {getSelectedChoiceNamesForItem(cartItem).length >
+                                  0 && (
+                                <div className="mt-2 w-full">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      setExpandedItems((prev) => ({
+                                        ...prev,
+                                        [cartItem.optionsHash]:
+                                          !prev[cartItem.optionsHash],
+                                      }))}
+                                    className=" text-gray-600 hover:text-gray-800"
+                                  >
+                                    <span className="max-w-80 truncate inline-block text-left">
+                                      {getSelectedChoiceNamesForItem(cartItem)
+                                        .join(", ")}
+                                    </span>
+                                    {expandedItems[cartItem.optionsHash]
+                                      ? (
+                                        <ChevronUp className="h-3 w-3 ml-1 flex-shrink-0" />
+                                      )
+                                      : (
+                                        <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
+                                      )}
+                                  </Button>
+
+                                  {expandedItems[cartItem.optionsHash] && (
+                                    <div className="mt-2 pl-2 border-l-2 border-gray-100">
+                                      <div className="text-sm text-gray-600 space-y-1">
+                                        {getSelectedChoiceNamesForItem(cartItem)
+                                          .map((choice, index) => (
+                                            <div
+                                              key={index}
+                                              className="flex items-center w-full"
+                                            >
+                                              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2">
+                                              </span>
+                                              {choice}
+                                            </div>
+                                          ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              <div className="flex justify-between items-center mt-3">
                                 <span className="font-bold text-primary">
                                   {currencySymbol}
                                   {cartItem.totalPrice.toFixed(2)}

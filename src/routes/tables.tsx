@@ -1,7 +1,7 @@
 "use client";
 
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +34,7 @@ import { useGetRestaurantById } from "@/core/hooks/use-restaurant-hooks";
 import { useGetTables } from "@/core/hooks/use-tables-hooks";
 import type { Table } from "@/core/models/TableModel";
 
-import { ArrowLeft, Banknote, CreditCard } from "lucide-react";
+import { ArrowLeft, Banknote, ChevronDown, ChevronUp, CreditCard } from "lucide-react";
 import { getSelectedChoiceNamesForItem } from "./cart/models/cart-item-model";
 
 export const Route = createFileRoute("/tables")({
@@ -55,6 +55,10 @@ export default function TableSelection() {
 
   const { data: restaurant, isLoading: isRestaurantLoading } =
     useGetRestaurantById();
+  
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
+    {},
+  );
 
   useEffect(() => {
     if (restaurant?.data) {
@@ -72,6 +76,7 @@ export default function TableSelection() {
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [orderNotes, setOrderNotes] = useState("");
   const [restaurantData, setRestaurantData] = useState<any>(null);
+  const tableRef = useRef(selectedTable);
 
   // toggle state (tab look)
   const [mode, setMode] = useState<"dine-in" | "pickup">("dine-in");
@@ -171,6 +176,7 @@ export default function TableSelection() {
     } else if (method === "card") {
       handleConfirmOrder(method);
     }
+
   };
 
   const handleConfirmOrder = (paymentMethod: "cash" | "card") => {
@@ -185,6 +191,7 @@ export default function TableSelection() {
     setTimeout(() => {
       getCart();
       refetchTables();
+      setSelectedTable(null);
     }, 1000);
   };
 
@@ -480,10 +487,52 @@ export default function TableSelection() {
                                       <p className="text-xs text-gray-500">
                                         Qty: {cartItem.quantity}
                                       </p>
-                                      <p className="text-xs text-gray-600 truncate w-64">
+                                    {getSelectedChoiceNamesForItem(cartItem).length >
+                                  0 && (
+                                <div className="mt-2 w-full">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      setExpandedItems((prev) => ({
+                                        ...prev,
+                                        [cartItem.optionsHash]:
+                                          !prev[cartItem.optionsHash],
+                                      }))}
+                                    className=" text-gray-600 hover:text-gray-800"
+                                  >
+                                    <span className="max-w-62 truncate inline-block text-left">
+                                      {getSelectedChoiceNamesForItem(cartItem)
+                                        .join(", ")}
+                                    </span>
+                                    {expandedItems[cartItem.optionsHash]
+                                      ? (
+                                        <ChevronUp className="h-3 w-3 ml-1 flex-shrink-0" />
+                                      )
+                                      : (
+                                        <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
+                                      )}
+                                  </Button>
+
+                                  {expandedItems[cartItem.optionsHash] && (
+                                    <div className="mt-2 pl-2 border-l-2 border-gray-100">
+                                      <div className="text-sm text-gray-600 space-y-1">
                                         {getSelectedChoiceNamesForItem(cartItem)
-                                          .join(", ")}
-                                      </p>
+                                          .map((choice, index) => (
+                                            <div
+                                              key={index}
+                                              className="flex items-center w-full"
+                                            >
+                                              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2">
+                                              </span>
+                                              {choice}
+                                            </div>
+                                          ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                                     </div>
                                     <div className="flex items-center">
                                       <span className="font-bold text-primary">

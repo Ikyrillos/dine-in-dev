@@ -278,6 +278,12 @@ export default function Menu() {
     setCurrentOptionIndex((prev) => prev + 1);
   };
 
+  const prevStep = () => {
+    setCurrentOptionIndex((prev) => Math.max(0, prev - 1));
+  };
+
+  const isFirstStep = currentOptionIndex === 0;
+
   const nextOrAddToCart = () => {
     if (!selectedItem) return;
 
@@ -523,6 +529,21 @@ export default function Menu() {
               </Badge>
             </div>
           )}
+        
+        {/* Cancel/Close button when configuring item */}
+        {selectedItem && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSelectedItem(null);
+              resetConfiguration();
+            }}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            ✕
+          </Button>
+        )}
       </div>
 
       {/* Body */}
@@ -885,23 +906,55 @@ export default function Menu() {
       {/* Sticky Bottom Bar */}
       {selectedItem
         ? (
-          <div className="sticky bottom-0 left-0 right-0 bg-white border-t px-6 py-4 ">
-            <Button
-              onClick={nextOrAddToCart}
-              disabled={!canProceed()}
-              className="w-full h-14 text-lg font-semibold justify-between px-6"
-            >
-              <span>
-                {isLastStep || selectedItem.options.length === 0
-                  ? "Add to Cart"
-                  : "Next"}
-              </span>
-              <span className="font-bold">
-                {currencySymbol}
-                {(calculateItemPrice(selectedItem, selectedOptions) *
-                  (isLastStep ? quantity : 1)).toFixed(2)}
-              </span>
-            </Button>
+          <div className="sticky bottom-0 left-0 right-0 bg-white border-t px-6 py-4">
+            {/* Show back button when not on first step and has options */}
+            {!isFirstStep && selectedItem.options.length > 0 && (
+              <div className="flex gap-3 mb-3">
+                <Button
+                  onClick={prevStep}
+                  variant="outline"
+                  className="flex-1 h-12 text-base font-semibold"
+                >
+                  Back
+                </Button>
+                <Button
+                  onClick={nextOrAddToCart}
+                  disabled={!canProceed()}
+                  className="flex-1 h-12 text-base font-semibold justify-between px-4"
+                >
+                  <span>
+                    {isLastStep || selectedItem.options.length === 0
+                      ? "Add to Cart"
+                      : "Next"}
+                  </span>
+                  <span className="font-bold">
+                    {currencySymbol}
+                    {(calculateItemPrice(selectedItem, selectedOptions) *
+                      (isLastStep ? quantity : 1)).toFixed(2)}
+                  </span>
+                </Button>
+              </div>
+            )}
+            
+            {/* Show single button when on first step or no options */}
+            {(isFirstStep || selectedItem.options.length === 0) && (
+              <Button
+                onClick={nextOrAddToCart}
+                disabled={!canProceed()}
+                className="w-full h-14 text-lg font-semibold justify-between px-6"
+              >
+                <span>
+                  {isLastStep || selectedItem.options.length === 0
+                    ? "Add to Cart"
+                    : "Next"}
+                </span>
+                <span className="font-bold">
+                  {currencySymbol}
+                  {(calculateItemPrice(selectedItem, selectedOptions) *
+                    (isLastStep ? quantity : 1)).toFixed(2)}
+                </span>
+              </Button>
+            )}
           </div>
         )
         : (
@@ -1015,6 +1068,9 @@ export default function Menu() {
                       {isPickupOrder
                         ? cartItem.menuItem.name
                         : cartItem.menuItem.name}
+                    </p>
+                    <p className="text-sm text-muted-foreground truncate w-96">
+                      {getSelectedChoiceNamesForItem(cartItem).join(", ")}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       Qty: {cartItem.quantity}

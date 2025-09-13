@@ -61,8 +61,11 @@ export default function TableSelection() {
   );
 
   useEffect(() => {
+    const xFoundationId = localStorage.getItem("x-foundation-id");
     if (restaurant?.data) {
-      localStorage.setItem("x-foundation-id", restaurant.data.id);
+      if (xFoundationId !== restaurant.data.id || !xFoundationId) {
+        localStorage.setItem("x-foundation-id", restaurant.data.id);
+      }
     }
   }, [restaurant]);
 
@@ -297,14 +300,14 @@ export default function TableSelection() {
                 <ToggleGroupItem
                   value="dine-in"
                   disabled={!restaurantData?.hasDineIn}
-                  className="rounded-lg h-12 text-base data-[state=on]:bg-white data-[state=on]:shadow-sm"
+                  className="rounded-lg h-12 text-base data-[state=on]:bg-primary data-[state=on]:shadow-sm data-[state=on]:text-primary-foreground"
                 >
                   Dine-in
                 </ToggleGroupItem>
                 <ToggleGroupItem
                   value="pickup"
                   disabled={!restaurantData?.hasPickup}
-                  className="rounded-lg h-12 text-base data-[state=on]:bg-white data-[state=on]:shadow-sm"
+                  className="rounded-lg h-12 text-base data-[state=on]:bg-primary data-[state=on]:shadow-sm data-[state=on]:text-primary-foreground"
                 >
                   Pickup
                 </ToggleGroupItem>

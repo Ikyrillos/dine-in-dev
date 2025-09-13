@@ -47,8 +47,8 @@ axiosInterceptorInstance.interceptors.response.use(
         // if (error.response.status === 401) {
         //     localStorage.removeItem("accessToken");
         //     localStorage.removeItem("refreshToken");
-        localStorage.removeItem("x-foundation-id");
-        sessionStorage.clear();
+        // localStorage.removeItem("x-foundation-id");
+        // sessionStorage.clear();
 
         //     // 2. Replace current history entry so Back won’t return to the page
         //     window.location.replace(routes.auth.login);

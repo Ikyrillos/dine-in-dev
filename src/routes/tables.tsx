@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   ResizableHandle,
@@ -78,6 +79,7 @@ export default function TableSelection() {
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [orderNotes, setOrderNotes] = useState("");
+  const [discount, setDiscount] = useState<number>(0);
   const [restaurantData, setRestaurantData] = useState<any>(null);
   // toggle state (tab look)
   const [mode, setMode] = useState<"dine-in" | "pickup">("dine-in");
@@ -185,10 +187,12 @@ export default function TableSelection() {
     cartCheckout.mutate({
       tableId: selectedTable.id,
       note: orderNotes,
+      discount: discount,
       paymentMethod: paymentMethod,
     });
     setShowPaymentOptions(false);
     setOrderNotes("");
+    setDiscount(0);
     setTimeout(() => {
       getCart();
       refetchTables();
@@ -432,7 +436,7 @@ export default function TableSelection() {
                             </h3>
 
                             {/* Order Notes Section */}
-                            <div className="mb-6">
+                            <div className="mb-4">
                               <Label
                                 htmlFor="orderNotes"
                                 className="text-sm font-medium"
@@ -446,6 +450,29 @@ export default function TableSelection() {
                                 onChange={(e) => setOrderNotes(e.target.value)}
                                 className="mt-2"
                                 rows={3}
+                              />
+                            </div>
+
+                            {/* Discount Section */}
+                            <div className="mb-6">
+                              <Label
+                                htmlFor="discount"
+                                className="text-sm font-medium"
+                              >
+                                Discount Amount
+                              </Label>
+                              <Input
+                                id="discount"
+                                type="number"
+                                placeholder="Enter discount amount (optional)"
+                                value={discount}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value);
+                                  setDiscount(isNaN(val) ? 0 : val);
+                                }}
+                                className="mt-2"
+                                min="0"
+                                step="0.01"
                               />
                             </div>
 

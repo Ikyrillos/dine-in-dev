@@ -64,13 +64,13 @@ export const useAddItemToCart = () => {
 export const useCheckoutCart = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ tableId, note, promoCode, paymentMethod }: {
+        mutationFn: ({ tableId, note, discount, paymentMethod }: {
             tableId: string;
             note?: string;
-            promoCode?: string;
+            discount?: number;
             paymentMethod: "cash" | "card";
         }
-        ) => oldCartApi.checkoutCart(tableId, note, promoCode, paymentMethod),
+        ) => oldCartApi.checkoutCart(tableId, note, discount, paymentMethod),
         onSuccess: (_response, data) => {
             // Invalidate the cart query to ensure it refetch
             queryClient.invalidateQueries({

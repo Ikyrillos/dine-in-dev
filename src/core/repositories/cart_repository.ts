@@ -9,7 +9,7 @@ import type {
 interface CheckoutRequest {
     tableId: string;
     note?: string;
-    promoCode?: string;
+    discount?: number;
     source: string;
     successUrl?: string;
     failUrl?: string;
@@ -21,7 +21,7 @@ class CartRepository {
     checkoutCart(
         tableId: string,
         note?: string,
-        promoCode?: string,
+        discount?: number,
         paymentMethod?: string,
     ): Promise<unknown> {
         return makeRequest<CheckoutRequest, unknown>({
@@ -30,7 +30,7 @@ class CartRepository {
             data: {
                 tableId,
                 note,
-                promoCode,
+                discount,
                 source: "Dine-in",
                 successUrl: "https://www.secondserving.uk/",
                 failUrl: "https://www.secondserving.uk/",

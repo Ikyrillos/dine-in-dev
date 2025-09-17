@@ -24,7 +24,7 @@ import { useCartOperations } from "@/core/hooks/cart_hooks";
 import { useGetMenuCategories } from "@/core/hooks/get-categories-hooks";
 import { useGetMenuItems } from "@/core/hooks/get-menu-items";
 import type { IMenuItem } from "@/core/models/IMenuItem";
-import { oldCartApi } from "@/core/repositories/cart_repository";
+import { getTableCheckoutData, setTableCheckoutData } from "@/utils/table-checkout-storage";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -94,6 +94,7 @@ export default function Menu() {
   const [promoCode, setPromoCode] = useState("");
   console.log(setPromoCode);
   const [discount, setDiscount] = useState(0);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   // Check if this is a pickup order (no tableId)
   const tableId = new URLSearchParams(window.location.search).get("tableId");
@@ -141,6 +142,24 @@ export default function Menu() {
       );
     }
   }, [debouncedPickupQuantities, isPickupOrder, updatePickupCartQuantity]);
+
+  // Load stored checkout data for table orders when component mounts or tableId changes
+  useEffect(() => {
+    if (!isPickupOrder && tableId) {
+      const storedData = getTableCheckoutData(tableId);
+      setDiscount(storedData.discount);
+      setNotes(storedData.notes);
+      setDataLoaded(true);
+    }
+  }, [tableId, isPickupOrder]);
+
+  // Save checkout data to local storage whenever discount or notes change (for table orders)
+  // Only save after initial data has been loaded to prevent overwriting
+  useEffect(() => {
+    if (!isPickupOrder && tableId && dataLoaded) {
+      setTableCheckoutData(tableId, { discount, notes });
+    }
+  }, [discount, notes, tableId, isPickupOrder, dataLoaded]);
 
   // Get appropriate cart data based on order type
   const cartItems = useMemo(() => {
@@ -386,12 +405,8 @@ export default function Menu() {
         }
       });
     } else {
-      // Table checkout
-      oldCartApi.printPosOrder(tableId || "").then((response) => {
-        if (response) {
-          navigate({ to: `/tables` });
-        }
-      });
+      // Table checkout - navigate back to tables (discount and notes are stored locally)
+      navigate({ to: `/tables` });
     }
     setShowConfirmDialog(false);
   };
@@ -960,34 +975,34 @@ export default function Menu() {
         : (
           cartItems.length > 0 && (
             <div className="sticky bottom-0 left-0 right-0 bg-white border-t px-6 py-4 space-y-4">
-              {
-                <div>
-                  <Label className="text-sm font-medium">
-                    Special Instructions
-                  </Label>
-                  <Textarea
-                    placeholder="Any special requests..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={3}
-                    className="mt-2"
-                  />
-                  {/* Discount */}
-                  <Label className="text-sm font-medium mt-4">
-                    Discount Code
-                  </Label>
-                  <Input
-                    type="number"
-                    placeholder="Enter discount code"
-                    value={discount}
-                    onChange={(e) => {
-                      const val = Number(e.target.value);
-                      setDiscount(isNaN(val) ? 0 : val);
-                    }}
-                    className="mt-2"
-                  />
-                </div>
-              }
+              <div>
+                <Label className="text-sm font-medium">
+                  Special Instructions
+                </Label>
+                <Textarea
+                  placeholder="Any special requests..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  className="mt-2"
+                />
+                {/* Discount */}
+                <Label className="text-sm font-medium mt-4">
+                  Discount Amount
+                </Label>
+                <Input
+                  type="text"
+                  placeholder="Enter discount amount"
+                  value={discount}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setDiscount(isNaN(val) ? 0 : val);
+                  }}
+                  className="mt-2"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
 
               <Separator />
               <div className="flex justify-between items-center">

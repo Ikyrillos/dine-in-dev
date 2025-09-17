@@ -14,15 +14,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 import {
@@ -34,6 +31,7 @@ import { useAuth } from "@/core/hooks/use-auth";
 import { useGetRestaurantById } from "@/core/hooks/use-restaurant-hooks";
 import { useGetTables } from "@/core/hooks/use-tables-hooks";
 import type { Table } from "@/core/models/TableModel";
+import { clearTableCheckoutData, getTableCheckoutData } from "@/utils/table-checkout-storage";
 
 import { ArrowLeft, Banknote, ChevronDown, ChevronUp, CreditCard } from "lucide-react";
 import { getSelectedChoiceNamesForItem } from "./cart/models/cart-item-model";
@@ -56,7 +54,7 @@ export default function TableSelection() {
 
   const { data: restaurant, isLoading: isRestaurantLoading } =
     useGetRestaurantById();
-  
+
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
     {},
   );
@@ -117,6 +115,19 @@ export default function TableSelection() {
       setMode("dine-in");
     }
   }, [restaurantData]);
+
+  // Load checkout data from local storage when a table is selected
+  useEffect(() => {
+    if (selectedTable) {
+      const checkoutData = getTableCheckoutData(selectedTable.id);
+      setOrderNotes(checkoutData.notes);
+      setDiscount(checkoutData.discount);
+    } else {
+      // Clear when no table is selected
+      setOrderNotes("");
+      setDiscount(0);
+    }
+  }, [selectedTable]);
 
   // EXACT tile colors per screenshot
   const getTableColor = (status: string) => {
@@ -190,6 +201,10 @@ export default function TableSelection() {
       discount: discount,
       paymentMethod: paymentMethod,
     });
+
+    // Clear the stored checkout data for this table after payment
+    clearTableCheckoutData(selectedTable.id);
+
     setShowPaymentOptions(false);
     setOrderNotes("");
     setDiscount(0);
@@ -435,46 +450,7 @@ export default function TableSelection() {
                               Payment
                             </h3>
 
-                            {/* Order Notes Section */}
-                            <div className="mb-4">
-                              <Label
-                                htmlFor="orderNotes"
-                                className="text-sm font-medium"
-                              >
-                                Special Instructions
-                              </Label>
-                              <Textarea
-                                id="orderNotes"
-                                placeholder="Any special requests..."
-                                value={orderNotes}
-                                onChange={(e) => setOrderNotes(e.target.value)}
-                                className="mt-2"
-                                rows={3}
-                              />
-                            </div>
-
-                            {/* Discount Section */}
-                            <div className="mb-6">
-                              <Label
-                                htmlFor="discount"
-                                className="text-sm font-medium"
-                              >
-                                Discount Amount
-                              </Label>
-                              <Input
-                                id="discount"
-                                type="number"
-                                placeholder="Enter discount amount (optional)"
-                                value={discount}
-                                onChange={(e) => {
-                                  const val = Number(e.target.value);
-                                  setDiscount(isNaN(val) ? 0 : val);
-                                }}
-                                className="mt-2"
-                                min="0"
-                                step="0.01"
-                              />
-                            </div>
+                           
 
                             {/* Payment Method Buttons */}
                             <div className="space-y-3">

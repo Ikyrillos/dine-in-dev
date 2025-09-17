@@ -1,5 +1,5 @@
-export const BASE_URL = "https://tawila-dev.medisync-solutions.com"; // Production URL
-export const RESTAURANT_ID = "674b5cdfd4f15cf44da5c090"; // Restaurant API URL
+export const BASE_URL = "https://api.tawila.co.uk"; // Production URL
+export const RESTAURANT_ID = "67cadca16c210077db259e7c"; // Restaurant API URL
 
 // "https://api.tawila.co.uk";
 

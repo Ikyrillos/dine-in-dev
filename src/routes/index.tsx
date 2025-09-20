@@ -24,7 +24,7 @@ export default function SignIn() {
   // Redirect if already logged in
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      navigate({ to: "/tables", replace: true })
+      navigate({ to: "/foundations", replace: true })
     }
   }, [isLoading, isAuthenticated, navigate])
 

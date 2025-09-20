@@ -1,5 +1,5 @@
 // src/core/utils/compareCartWithPrintedItems.ts
-import type { ICartItem } from "@/routes/cart/models/cart-item-model";
+import type { ICartItem } from "@/features/cart/cart/models/cart-item-model";
 
 export function getUnprintedItems(
   originalItems: ICartItem[],

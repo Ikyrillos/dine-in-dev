@@ -1,4 +1,5 @@
 
+import type { Delegation } from '@/features/foundations/dtos/dtos';
 import { BASE_URL } from '../apis-endpoints';
 import { makeRequest } from '../make-request';
 import type { LoginDto, LoginResponse, LogoutResponse, RegisterDto, RegisterResponse, User } from '../models/dtos/dtos';
@@ -82,6 +83,13 @@ class AuthService {
         window.location.href = `https://api.tawila.co.uk/auth/google/callback?redirect_url=restaurant-app-ttva.vercel.app`;
     }
 
+    async getUserDelegations(userId: string) {
+        return await makeRequest<void, Delegation[]>({
+            method: 'GET',
+            url: `${BASE_URL}/delegations/user/${userId}`,
+            withCredentials: true,
+        });
+    }
 
 }
 

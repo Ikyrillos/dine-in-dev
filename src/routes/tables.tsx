@@ -28,13 +28,24 @@ import {
   useClearCart,
 } from "@/core/hooks/cart_hooks";
 import { useAuth } from "@/core/hooks/use-auth";
-import { useGetRestaurantById } from "@/core/hooks/use-restaurant-hooks";
+import { useGetRestaurantByIdParams } from "@/core/hooks/use-restaurant-hooks";
 import { useGetTables } from "@/core/hooks/use-tables-hooks";
 import type { Table } from "@/core/models/TableModel";
-import { clearTableCheckoutData, getTableCheckoutData } from "@/utils/table-checkout-storage";
+import {
+  clearTableCheckoutData,
+  getTableCheckoutData,
+} from "@/utils/table-checkout-storage";
 
-import { ArrowLeft, Banknote, ChevronDown, ChevronUp, CreditCard } from "lucide-react";
-import { getSelectedChoiceNamesForItem } from "./cart/models/cart-item-model";
+import { authApi } from "@/core/repositories/auth-repository";
+import type { Delegation } from "@/features/foundations/dtos/dtos";
+import {
+  ArrowLeft,
+  Banknote,
+  ChevronDown,
+  ChevronUp,
+  CreditCard,
+} from "lucide-react";
+import { getSelectedChoiceNamesForItem } from "../features/cart/cart/models/cart-item-model";
 
 export const Route = createFileRoute("/tables")({
   component: TableSelection,
@@ -51,22 +62,33 @@ export const Route = createFileRoute("/tables")({
 export default function TableSelection() {
   const auth = useAuth();
   const navigate = useNavigate();
+  const {
+    data: restaurant,
+    isLoading: isRestaurantLoading,
+  } = useGetRestaurantByIdParams();
 
-  const { data: restaurant, isLoading: isRestaurantLoading } =
-    useGetRestaurantById();
+  const [delegations, setDelegations] = useState<Delegation[]>([]);
+  useEffect(() => {
+    const fetchDelegations = async () => {
+      try {
+        if (!auth.user?.id) return;
+        const response = await authApi.getUserDelegations(auth.user?.id);
+        setDelegations(response.data);
+      } catch (err) {
+        console.log(
+          "Failed to load delegations. Please try again later." + err,
+        );
+      } finally {
+        console.log(false);
+      }
+    };
+
+    fetchDelegations();
+  }, [auth.user?.id]);
 
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
     {},
   );
-
-  useEffect(() => {
-    const xFoundationId = localStorage.getItem("x-foundation-id");
-    if (restaurant?.data) {
-      if (xFoundationId !== restaurant.data.id || !xFoundationId) {
-        localStorage.setItem("x-foundation-id", restaurant.data.id);
-      }
-    }
-  }, [restaurant]);
 
   const {
     data: tables,
@@ -190,7 +212,6 @@ export default function TableSelection() {
     } else if (method === "card") {
       handleConfirmOrder(method);
     }
-
   };
 
   const handleConfirmOrder = (paymentMethod: "cash" | "card") => {
@@ -260,6 +281,16 @@ export default function TableSelection() {
                       </div>
                     </div>
                     <DropdownMenuSeparator />
+                    {delegations.length > 1 && (
+                      <DropdownMenuItem
+                        onClick={() => {
+                          localStorage.removeItem("x-foundation-id");
+                          navigate({ to: "/" });
+                        }}
+                      >
+                        Change Restaurant
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                       onClick={() => {
                         auth.signOut();
@@ -270,7 +301,9 @@ export default function TableSelection() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <h1 className="text-3xl font-bold text-primary">{ restaurant?.data?.name}</h1>
+                <h1 className="text-3xl font-bold text-primary">
+                  {restaurant?.data?.name}
+                </h1>
               </div>
               <div className=" h-20">
                 <div className="px-4">
@@ -450,8 +483,6 @@ export default function TableSelection() {
                               Payment
                             </h3>
 
-                           
-
                             {/* Payment Method Buttons */}
                             <div className="space-y-3">
                               <Button
@@ -491,52 +522,59 @@ export default function TableSelection() {
                                       <p className="text-xs text-gray-500">
                                         Qty: {cartItem.quantity}
                                       </p>
-                                    {getSelectedChoiceNamesForItem(cartItem).length >
-                                  0 && (
-                                <div className="mt-2 w-full">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() =>
-                                      setExpandedItems((prev) => ({
-                                        ...prev,
-                                        [cartItem.optionsHash]:
-                                          !prev[cartItem.optionsHash],
-                                      }))}
-                                    className=" text-gray-600 hover:text-gray-800"
-                                  >
-                                    <span className="max-w-62 truncate inline-block text-left">
                                       {getSelectedChoiceNamesForItem(cartItem)
-                                        .join(", ")}
-                                    </span>
-                                    {expandedItems[cartItem.optionsHash]
-                                      ? (
-                                        <ChevronUp className="h-3 w-3 ml-1 flex-shrink-0" />
-                                      )
-                                      : (
-                                        <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
-                                      )}
-                                  </Button>
+                                            .length >
+                                          0 && (
+                                        <div className="mt-2 w-full">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() =>
+                                              setExpandedItems((prev) => ({
+                                                ...prev,
+                                                [cartItem.optionsHash]:
+                                                  !prev[cartItem.optionsHash],
+                                              }))}
+                                            className=" text-gray-600 hover:text-gray-800"
+                                          >
+                                            <span className="max-w-62 truncate inline-block text-left">
+                                              {getSelectedChoiceNamesForItem(
+                                                cartItem,
+                                              )
+                                                .join(", ")}
+                                            </span>
+                                            {expandedItems[cartItem.optionsHash]
+                                              ? (
+                                                <ChevronUp className="h-3 w-3 ml-1 flex-shrink-0" />
+                                              )
+                                              : (
+                                                <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
+                                              )}
+                                          </Button>
 
-                                  {expandedItems[cartItem.optionsHash] && (
-                                    <div className="mt-2 pl-2 border-l-2 border-gray-100">
-                                      <div className="text-sm text-gray-600 space-y-1">
-                                        {getSelectedChoiceNamesForItem(cartItem)
-                                          .map((choice, index) => (
-                                            <div
-                                              key={index}
-                                              className="flex items-center w-full"
-                                            >
-                                              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2">
-                                              </span>
-                                              {choice}
+                                          {expandedItems[
+                                            cartItem.optionsHash
+                                          ] && (
+                                            <div className="mt-2 pl-2 border-l-2 border-gray-100">
+                                              <div className="text-sm text-gray-600 space-y-1">
+                                                {getSelectedChoiceNamesForItem(
+                                                  cartItem,
+                                                )
+                                                  .map((choice, index) => (
+                                                    <div
+                                                      key={index}
+                                                      className="flex items-center w-full"
+                                                    >
+                                                      <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2">
+                                                      </span>
+                                                      {choice}
+                                                    </div>
+                                                  ))}
+                                              </div>
                                             </div>
-                                          ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
+                                          )}
+                                        </div>
+                                      )}
                                     </div>
                                     <div className="flex items-center">
                                       <span className="font-bold text-primary">

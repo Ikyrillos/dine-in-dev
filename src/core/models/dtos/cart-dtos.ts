@@ -1,4 +1,4 @@
-import type { ICartItem } from "@/routes/cart/models/cart-item-model";
+import type { ICartItem } from "@/features/cart/cart/models/cart-item-model";
 import type { IOption } from "../IMenuItem";
 
 // ✅ make types match API response

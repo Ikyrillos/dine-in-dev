@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TablesRouteImport } from './routes/tables'
 import { Route as MenuRouteImport } from './routes/menu'
+import { Route as FoundationsRouteImport } from './routes/foundations'
 import { Route as ControlRouteImport } from './routes/control'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -22,6 +23,11 @@ const TablesRoute = TablesRouteImport.update({
 const MenuRoute = MenuRouteImport.update({
   id: '/menu',
   path: '/menu',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FoundationsRoute = FoundationsRouteImport.update({
+  id: '/foundations',
+  path: '/foundations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ControlRoute = ControlRouteImport.update({
@@ -38,12 +44,14 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/control': typeof ControlRoute
+  '/foundations': typeof FoundationsRoute
   '/menu': typeof MenuRoute
   '/tables': typeof TablesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/control': typeof ControlRoute
+  '/foundations': typeof FoundationsRoute
   '/menu': typeof MenuRoute
   '/tables': typeof TablesRoute
 }
@@ -51,20 +59,22 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/control': typeof ControlRoute
+  '/foundations': typeof FoundationsRoute
   '/menu': typeof MenuRoute
   '/tables': typeof TablesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/control' | '/menu' | '/tables'
+  fullPaths: '/' | '/control' | '/foundations' | '/menu' | '/tables'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/control' | '/menu' | '/tables'
-  id: '__root__' | '/' | '/control' | '/menu' | '/tables'
+  to: '/' | '/control' | '/foundations' | '/menu' | '/tables'
+  id: '__root__' | '/' | '/control' | '/foundations' | '/menu' | '/tables'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ControlRoute: typeof ControlRoute
+  FoundationsRoute: typeof FoundationsRoute
   MenuRoute: typeof MenuRoute
   TablesRoute: typeof TablesRoute
 }
@@ -83,6 +93,13 @@ declare module '@tanstack/react-router' {
       path: '/menu'
       fullPath: '/menu'
       preLoaderRoute: typeof MenuRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/foundations': {
+      id: '/foundations'
+      path: '/foundations'
+      fullPath: '/foundations'
+      preLoaderRoute: typeof FoundationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/control': {
@@ -105,6 +122,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ControlRoute: ControlRoute,
+  FoundationsRoute: FoundationsRoute,
   MenuRoute: MenuRoute,
   TablesRoute: TablesRoute,
 }

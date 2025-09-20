@@ -26,7 +26,7 @@ export interface CustomLink {
   value: string
 }
 export interface Restaurant {
-    id: string;
+    _id: string;
     name: string;
     slug: string;
     phoneNumber: string;

@@ -17,7 +17,7 @@ export const Route = createFileRoute("/")({
     const accessToken = localStorage.getItem("accessToken"); // or whatever key you use
     if (accessToken) {
       throw redirect({
-        to: "/tables",
+        to: "/foundations",
         replace: true,
       });
     }

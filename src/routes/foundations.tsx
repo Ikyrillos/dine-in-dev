@@ -12,5 +12,7 @@ export const Route = createFileRoute("/foundations")({
         replace: true,
       });
     }
+
+    return null;
   },
 })

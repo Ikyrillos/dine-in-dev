@@ -285,7 +285,7 @@ export default function TableSelection() {
                       <DropdownMenuItem
                         onClick={() => {
                           localStorage.removeItem("x-foundation-id");
-                          navigate({ to: "/" });
+                          navigate({ to: "/foundations" });
                         }}
                       >
                         Change Restaurant

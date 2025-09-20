@@ -5,12 +5,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/core/hooks/use-auth"
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
 import { AlertCircle, Eye, EyeOff } from "lucide-react"
 import { useEffect, useState } from "react"
 
+
 export const Route = createFileRoute("/")({
   component: SignIn,
+  beforeLoad: async () => {
+    // if access token exists, redirect to /tables
+    const accessToken = localStorage.getItem("accessToken"); // or whatever key you use
+    if (accessToken) {
+      throw redirect({
+        to: "/tables",
+        replace: true,
+      });
+    }
+  },
 })
 
 export default function SignIn() {

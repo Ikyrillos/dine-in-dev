@@ -68,9 +68,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUser(parsedUser);
             setIsAuthenticated(true);
             console.log('🎉 Auth initialized successfully');
-          } else {
-            console.log('❌ Token expired, clearing auth data');
-            clearAuthData();
           }
         } else {
           console.log('❌ No valid auth data found');
@@ -79,7 +76,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       } catch (error) {
         console.error('💥 Failed to initialize auth state:', error);
-        clearAuthData();
       } finally {
         console.log('🏁 Setting isLoading to false');
         setIsLoading(false);

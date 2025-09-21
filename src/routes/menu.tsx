@@ -91,8 +91,6 @@ export default function Menu() {
   );
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [orderNote, setOrderNote] = useState("");
-  const [promoCode, setPromoCode] = useState("");
-  console.log(setPromoCode);
   const [discount, setDiscount] = useState(0);
   const [dataLoaded, setDataLoaded] = useState(false);
 
@@ -125,7 +123,7 @@ export default function Menu() {
 
   // Breakdown for pickup orders
   const { data: breakdown } = useGetBreakDown(
-    promoCode,
+    discount.toString(),
   );
 
   // Handle debounced pickup cart updates
@@ -397,7 +395,7 @@ export default function Menu() {
         successUrl: "https://www.secondserving.uk/",
         addressId: "",
         note: notes,
-        promoCode: promoCode,
+        discount: discount,
         source: "Dine-in",
       }).then((response) => {
         if (response._id) {

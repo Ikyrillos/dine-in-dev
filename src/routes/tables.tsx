@@ -50,8 +50,9 @@ import { getSelectedChoiceNamesForItem } from "../features/cart/cart/models/cart
 
 export const Route = createFileRoute("/tables")({
   component: TableSelection,
-  beforeLoad: ({ context }: { context: any }) => {
-    if (!context.auth.isAuthenticated) {
+  beforeLoad: () => {
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
       throw redirect({
         to: "/",
         search: { redirect: "/tables" },

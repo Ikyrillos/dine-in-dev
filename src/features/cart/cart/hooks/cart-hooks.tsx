@@ -35,10 +35,7 @@ export const useGetBreakDown = (promoCode?: string) => {
         return await cartApi.breakdown({
           addressId: "",
           note: "",
-          promoCode,
-          successUrl: "",
-          failUrl: "",
-          source: "web",
+          discount: promoCode,
         });
       } catch (error: any) {
         if (error?.response?.status !== 401) {

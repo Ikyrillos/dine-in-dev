@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { AlertCircle } from "lucide-react";
 
 import { useAuth } from "@/core/hooks/use-auth";
 import { authApi } from "@/core/repositories/auth-repository";
@@ -21,7 +21,6 @@ export default function DelegationsPage() {
   const [delegations, setDelegations] = useState<Delegation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  console.log("delegations", delegations);
   const auth = useAuth();
   const userId = auth.user?.id;
   const navigate = useNavigate();

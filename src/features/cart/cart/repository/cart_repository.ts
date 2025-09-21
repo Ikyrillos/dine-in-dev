@@ -29,7 +29,7 @@ export interface CheckoutData {
     failUrl: string;
     addressId?: string;
     note?: string;
-    promoCode?: string;
+    discount?: number;
     source: "Dine-in" | "web",
 }
 
@@ -66,7 +66,7 @@ class CartRepository {
     }) {
         return await makeRequest({
             method: "POST",
-            url: `${BASE_URL}/restaurant-cart`,
+            url: `${BASE_URL}/pickup-cart`,
             data: {
                 menuItemId: data.menuItemId,
                 quantity: data.quantity,
@@ -86,21 +86,21 @@ class CartRepository {
     async getCart() {
         const { data } = await makeRequest<unknown, ICart>({
             method: "GET",
-            url: `${BASE_URL}/restaurant-cart`,
+            url: `${BASE_URL}/pickup-cart`,
         });
         return data;
     }
 
-  async  postCheckout({ successUrl, failUrl, addressId, note, promoCode }: CheckoutData): Promise<CheckoutResponse> {
+    async postCheckout({ successUrl, failUrl, addressId, note, discount }: CheckoutData): Promise<CheckoutResponse> {
         const { data } = await makeRequest<CheckoutData, CheckoutResponse>({
             method: "POST",
-            url: `${BASE_URL}/restaurant-cart/checkout/pickup`,
+            url: `${BASE_URL}/pickup-cart/checkout`,
             data: {
                 successUrl,
                 failUrl,
                 addressId: addressId ? addressId : undefined,
                 note,
-                promoCode: promoCode,
+                discount: discount,
                 source: 'Dine-in',
             },
         });
@@ -108,18 +108,29 @@ class CartRepository {
     };
 
 
-    breakdown = async ({ addressId, note, promoCode }: CheckoutData): Promise<BreakdownResponse> => {
+    breakdown = async ({ addressId, note, discount }: {
+        addressId?: string;
+        note?: string;
+        discount?: string;
+    }): Promise<BreakdownResponse> => {
         try {
 
-            const { data } = await makeRequest<CheckoutData, BreakdownResponse>({
+            const { data } = await makeRequest<{
+                successUrl: string;
+                failUrl: string;
+                addressId?: string;
+                note?: string;
+                discount?: string;
+                source: "web";
+            }, BreakdownResponse>({
                 method: "POST",
-                url: `${BASE_URL}/restaurant-cart/breakdown`,
+                url: `${BASE_URL}/pickup-cart/breakdown`,
                 data: {
                     successUrl: "",
                     failUrl: "",
                     addressId: addressId ? addressId : undefined,
                     note,
-                    promoCode: promoCode,
+                    discount,
                     source: "web",
                 },
             });
@@ -139,7 +150,7 @@ class CartRepository {
     async clearCart() {
         return await makeRequest<void, unknown>({
             method: "DELETE",
-            url: `${BASE_URL}/restaurant-cart`,
+            url: `${BASE_URL}/pickup-cart`,
         });
     }
 
@@ -152,7 +163,7 @@ class CartRepository {
     async updateItemQuantity(itemId: string, quantity: number) {
         return await makeRequest<{ quantity: number }, unknown>({
             method: "PUT",
-            url: `${BASE_URL}/restaurant-cart/items/${itemId}`,
+            url: `${BASE_URL}/pickup-cart/items/${itemId}`,
             data: { quantity },
         });
     }
@@ -165,7 +176,7 @@ class CartRepository {
     async removeItemFromCart(itemId: string) {
         return await makeRequest<void, unknown>({
             method: "DELETE",
-            url: `${BASE_URL}/restaurant-cart/items/${itemId}`,
+            url: `${BASE_URL}/pickup-cart/items/${itemId}`,
         });
     }
 }

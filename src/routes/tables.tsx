@@ -38,6 +38,7 @@ import {
 
 import { authApi } from "@/core/repositories/auth-repository";
 import type { Delegation } from "@/features/foundations/dtos/dtos";
+import { useFoundationStore } from "@/features/foundations/store/foundation-store";
 import {
   ArrowLeft,
   Banknote,
@@ -62,6 +63,7 @@ export const Route = createFileRoute("/tables")({
 export default function TableSelection() {
   const auth = useAuth();
   const navigate = useNavigate();
+  const clearSelectedFoundation = useFoundationStore(state => state.clearSelectedFoundation);
   const {
     data: restaurant,
     isLoading: isRestaurantLoading,
@@ -284,7 +286,7 @@ export default function TableSelection() {
                     {delegations.length > 1 && (
                       <DropdownMenuItem
                         onClick={() => {
-                          localStorage.removeItem("x-foundation-id");
+                          clearSelectedFoundation();
                           navigate({ to: "/foundations" });
                         }}
                       >

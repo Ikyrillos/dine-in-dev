@@ -6,11 +6,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 
 import { useAuth } from "@/core/hooks/use-auth";
 import { authApi } from "@/core/repositories/auth-repository";
 import { FoundationCard } from "./components/FoundationCard";
 import type { Delegation } from "./dtos/dtos";
+import { useFoundationStore } from "./store/foundation-store";
 
 
 
@@ -21,6 +24,22 @@ export default function DelegationsPage() {
   console.log("delegations", delegations);
   const auth = useAuth();
   const userId = auth.user?.id;
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const setSelectedFoundation = useFoundationStore(state => state.setSelectedFoundation);
+
+  function handleSelectRestaurant(foundation: Delegation) {
+    console.log("Setting foundation ID:", foundation._id);
+    console.log("Full foundation object:", foundation);
+
+    queryClient.clear();
+
+    setSelectedFoundation(foundation);
+
+    navigate({
+      to: "/tables",
+    });
+  }
 
   useEffect(() => {
     const fetchDelegations = async () => {
@@ -28,6 +47,12 @@ export default function DelegationsPage() {
         if (!userId) return;
         const response = await authApi.getUserDelegations(userId);
         setDelegations(response.data);
+
+        // Only auto-select if there's exactly one delegation AND no foundation is already selected
+        const existingFoundationId = localStorage.getItem("x-foundation-id");
+        if (response.data.length === 1 && !existingFoundationId) {
+          handleSelectRestaurant(response.data[0]);
+        }
       } catch (err) {
         setError("Failed to load delegations. Please try again later." + err);
       } finally {

@@ -14,19 +14,26 @@ export const useFoundationStore = create<FoundationState>()(
   persist(
     (set, get) => ({
       selectedFoundation: null,
-      
+
       setSelectedFoundation: (foundation: Delegation) => {
         set({ selectedFoundation: foundation });
+        // Ensure localStorage is in sync
         localStorage.setItem("x-foundation-id", foundation.foundation._id);
       },
-      
+
       clearSelectedFoundation: () => {
         set({ selectedFoundation: null });
+        // Also clear from localStorage
+        localStorage.removeItem("x-foundation-id");
       },
-      
+
       getFoundationId: () => {
         const { selectedFoundation } = get();
-        return selectedFoundation?.foundation._id || null;
+        const storeId = selectedFoundation?.foundation._id;
+        const localStorageId = localStorage.getItem("x-foundation-id");
+
+        // Return the store value if available, otherwise fall back to localStorage
+        return storeId || localStorageId;
       },
     }),
     {

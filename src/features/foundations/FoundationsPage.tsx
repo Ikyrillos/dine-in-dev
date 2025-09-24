@@ -105,12 +105,9 @@ export default function DelegationsPage() {
         // Handle authentication errors specifically
         if (err?.response?.status === 401 || err?.response?.status === 403) {
           setError("Your session has expired. Please sign in again.");
-          // Clear all auth data and redirect to login
-          clearAllAuthData();
-          auth.signOut();
-          setTimeout(() => {
-            navigate({ to: "/", replace: true });
-          }, 1000);
+          // Don't auto-logout here - let the axios interceptor handle token expiration
+          // The token expiration dialog will be shown automatically
+          // Just show an error message to the user
         } else {
           setError("Failed to load delegations. Please check your internet connection and try again.");
         }

@@ -1,5 +1,7 @@
 // auth.tsx
+import { TokenExpirationDialog } from '@/components/TokenExpirationDialog';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { setTokenExpirationHandler } from '../axios-config';
 import type { User } from '../models/dtos/dtos';
 import { authApi } from '../repositories/auth-repository';
 
@@ -15,6 +17,8 @@ export interface AuthContextType {
   isLoading: boolean;
   signIn: (credentials: { username: string; password: string }) => Promise<boolean>;
   signOut: () => void;
+  handleTokenExpired: () => void;
+  showTokenExpiredDialog: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,11 +44,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showTokenExpiredDialog, setShowTokenExpiredDialog] = useState(false);
+  const [tokenCheckInterval, setTokenCheckInterval] = useState<NodeJS.Timeout | null>(null);
+
+  // Set up axios token expiration handler
+  useEffect(() => {
+    setTokenExpirationHandler(handleTokenExpired);
+  }, []);
 
   // Initialize auth state on mount
   useEffect(() => {
     console.log('🔄 Starting auth initialization...');
-    
+
     const initializeAuth = async () => {
       try {
         const userData = localStorage.getItem(USER_DATA_KEY);
@@ -64,10 +75,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.log('✅ Token is valid, parsing user data...');
             const parsedUser = JSON.parse(userData);
             console.log('👤 Parsed user:', parsedUser);
-            
+
             setUser(parsedUser);
             setIsAuthenticated(true);
+
+            // Start token validation for already authenticated users
+            startTokenValidation();
+
             console.log('🎉 Auth initialized successfully');
+          } else {
+            console.log('❌ Token expired during initialization');
+            // Token is expired, show expiration dialog
+            handleTokenExpired();
           }
         } else {
           console.log('❌ No valid auth data found');
@@ -90,13 +109,93 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (tokenCheckInterval) {
+        clearInterval(tokenCheckInterval);
+      }
+    };
+  }, [tokenCheckInterval]);
+
   const clearAuthData = () => {
     console.log('🧹 Clearing auth data');
     localStorage.removeItem(USER_DATA_KEY);
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.removeItem("x-foundation-id");
     setUser(null);
     setIsAuthenticated(false);
+    setShowTokenExpiredDialog(false);
+
+    // Clear token check interval
+    if (tokenCheckInterval) {
+      clearInterval(tokenCheckInterval);
+      setTokenCheckInterval(null);
+    }
+  };
+
+  // Start periodic token validation
+  const startTokenValidation = () => {
+    // Clear existing interval
+    if (tokenCheckInterval) {
+      clearInterval(tokenCheckInterval);
+    }
+
+    // Check token every 30 seconds
+    const interval = setInterval(() => {
+      const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+      if (accessToken && !isTokenValid(accessToken) && isAuthenticated) {
+        console.log('🚨 Token expired during periodic check');
+        handleTokenExpired();
+      }
+    }, 30000); // 30 seconds
+
+    setTokenCheckInterval(interval);
+  };
+
+  const handleTokenExpired = () => {
+    console.log('🚨 Handling token expiration');
+    // Don't clear auth data immediately, just show the dialog
+    setShowTokenExpiredDialog(true);
+  };
+
+  const handleLoginAgain = () => {
+    setShowTokenExpiredDialog(false);
+    clearAuthData();
+    // Redirect to login will happen automatically due to isAuthenticated becoming false
+  };
+
+  const handleSignOutFromDialog = () => {
+    setShowTokenExpiredDialog(false);
+    signOut();
+  };
+
+  // Optional: Token refresh functionality (currently not used)
+  const refreshTokens = async (): Promise<boolean> => {
+    try {
+      const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+      if (!refreshToken) {
+        return false;
+      }
+
+      const response = await authApi.refreshToken(refreshToken);
+      if (response.data?.accessToken && response.data?.refreshToken) {
+        // Update tokens
+        localStorage.setItem(ACCESS_TOKEN_KEY, response.data.accessToken);
+        localStorage.setItem(REFRESH_TOKEN_KEY, response.data.refreshToken);
+
+        // Restart token validation with new tokens
+        startTokenValidation();
+
+        console.log('Tokens refreshed successfully');
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      return false;
+    }
   };
 
   const signIn = async (credentials: { username: string; password: string }): Promise<boolean> => {
@@ -116,11 +215,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem(ACCESS_TOKEN_KEY, res.data.accessToken);
         localStorage.setItem(REFRESH_TOKEN_KEY, res.data.refreshToken);
         localStorage.setItem(USER_DATA_KEY, JSON.stringify(res.data.user));
-        
+
         // Update state synchronously
         setUser(res.data.user);
         setIsAuthenticated(true);
-        
+
+        // Start periodic token validation
+        startTokenValidation();
+
         console.log('Sign in successful, auth state updated');
         return true;
       }
@@ -151,11 +253,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isLoading,
     signIn,
     signOut,
+    handleTokenExpired,
+    showTokenExpiredDialog,
   };
 
   return (
     <AuthContext.Provider value={value}>
       {children}
+      <TokenExpirationDialog
+        open={showTokenExpiredDialog}
+        onLoginAgain={handleLoginAgain}
+        onSignOut={handleSignOutFromDialog}
+      />
     </AuthContext.Provider>
   );
 };

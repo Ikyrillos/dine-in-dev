@@ -14,13 +14,26 @@ import TawilaShimmer from "@/components/LoadingBranded"
 export const Route = createFileRoute("/")({
   component: SignIn,
   beforeLoad: async () => {
-    // if access token exists, redirect to /tables
-    const accessToken = localStorage.getItem("accessToken"); // or whatever key you use
+    // Check if user has a valid access token
+    const accessToken = localStorage.getItem("accessToken");
     if (accessToken) {
-      throw redirect({
-        to: "/foundations",
-        replace: true,
-      });
+      // Validate token before redirecting
+      try {
+        const payload = JSON.parse(atob(accessToken.split('.')[1]));
+        const currentTime = Math.floor(Date.now() / 1000);
+
+        // Only redirect if token is still valid
+        if (payload.exp > currentTime) {
+          throw redirect({
+            to: "/foundations",
+            replace: true,
+          });
+        }
+        // If token is expired, let user stay on login page
+      } catch (error) {
+        // Invalid token format, let user login
+        console.log('Invalid token format, staying on login page');
+      }
     }
   },
 })

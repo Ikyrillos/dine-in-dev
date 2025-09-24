@@ -1,6 +1,14 @@
 import axios from "axios";
 import { BASE_URL } from "./apis-endpoints";
 
+// Global reference to handle token expiration
+let handleTokenExpiration: (() => void) | null = null;
+
+// Function to set the token expiration handler
+export const setTokenExpirationHandler = (handler: () => void) => {
+    handleTokenExpiration = handler;
+};
+
 const baseURL = BASE_URL;
 const fallbackBaseURL = BASE_URL;
 
@@ -43,24 +51,19 @@ axiosInterceptorInstance.interceptors.response.use(
             return Promise.reject(error);
         }
 
-        // -------- 401 → force logout --------
-        // if (error.response.status === 401) {
-        //     localStorage.removeItem("accessToken");
-        //     localStorage.removeItem("refreshToken");
-        // localStorage.removeItem("x-foundation-id");
-        // sessionStorage.clear();
+        // Handle 401 errors (Unauthorized) - Token expired
+        if (error.response.status === 401) {
+            console.log('🚨 401 Error - Token expired, triggering token expiration handler');
 
-        //     // 2. Replace current history entry so Back won’t return to the page
-        //     window.location.replace(routes.auth.login);
-
-        //     // 3. (Optional) extra guard: if the user still presses Back,
-        //     //    immediately send them forward again.
-        //     window.onpopstate = () => {
-        //         window.location.replace(routes.auth.login);
-        //     };
+            // Only handle token expiration if we have a handler and there's an access token
+            const accessToken = localStorage.getItem("accessToken");
+            if (handleTokenExpiration && accessToken) {
+                // Call the token expiration handler (shows dialog instead of auto-logout)
+                handleTokenExpiration();
+            }
         }
 
-        // return Promise.reject(error);
-    // },
+        return Promise.reject(error);
+    }
 );
 export default axiosInterceptorInstance;

@@ -91,6 +91,20 @@ class AuthService {
         });
     }
 
+    /**
+     * Refresh access token using refresh token
+     * @param refreshToken The refresh token
+     * @returns New access and refresh tokens
+     */
+    async refreshToken(refreshToken: string) {
+        return await makeRequest<{ refreshToken: string }, LoginResponse>({
+            method: 'POST',
+            url: `${BASE_URL}/auth/refresh`,
+            data: { refreshToken },
+            withCredentials: true
+        });
+    }
+
 }
 
 export const authApi = new AuthService();

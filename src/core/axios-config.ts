@@ -53,13 +53,24 @@ axiosInterceptorInstance.interceptors.response.use(
 
         // Handle 401 errors (Unauthorized) - Token expired
         if (error.response.status === 401) {
-            console.log('🚨 401 Error - Token expired, triggering token expiration handler');
+            console.log('🚨 401 Error - Token expired, triggering token expiration handler at:', new Date().toISOString());
+            console.log('🚨 Request details:', {
+                url: error.config?.url,
+                method: error.config?.method,
+                baseURL: error.config?.baseURL
+            });
 
             // Only handle token expiration if we have a handler and there's an access token
             const accessToken = localStorage.getItem("accessToken");
+            console.log('🚨 Handler available:', !!handleTokenExpiration);
+            console.log('🚨 Access token available:', !!accessToken);
+
             if (handleTokenExpiration && accessToken) {
+                console.log('🚨 Calling token expiration handler from axios interceptor');
                 // Call the token expiration handler (shows dialog instead of auto-logout)
                 handleTokenExpiration();
+            } else {
+                console.log('🚨 Not calling handler - missing handler or token');
             }
         }
 

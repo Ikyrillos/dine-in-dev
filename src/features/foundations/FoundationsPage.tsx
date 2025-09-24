@@ -16,6 +16,9 @@ import { useFoundationStore } from "./store/foundation-store";
 
 // Clear all authentication and foundation data
 function clearAllAuthData() {
+  console.log('🧹 clearAllAuthData called in FoundationsPage at:', new Date().toISOString());
+  console.trace('🧹 clearAllAuthData stack trace:');
+
   // Clear localStorage
   localStorage.removeItem("UserData");
   localStorage.removeItem("accessToken");
@@ -33,7 +36,10 @@ function clearAllAuthData() {
       keysToRemove.push(key);
     }
   }
+  console.log('🧹 Removing additional auth keys:', keysToRemove);
   keysToRemove.forEach(key => localStorage.removeItem(key));
+
+  console.log('🧹 clearAllAuthData completed');
 }
 
 
@@ -65,9 +71,10 @@ export default function DelegationsPage() {
     const fetchDelegations = async () => {
       try {
         if (!userId) {
+          console.log('🚨 No userId in FoundationsPage - user not authenticated');
           setError("User not authenticated. Please sign in again.");
-          // Clear all auth data and redirect immediately
-          clearAllAuthData();
+          // Let the auth system handle logout properly with backup token preservation
+          console.log('🚨 Calling auth.signOut() from FoundationsPage');
           auth.signOut();
           setTimeout(() => {
             navigate({ to: "/", replace: true });

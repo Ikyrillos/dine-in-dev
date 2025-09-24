@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import TawilaShimmer from "@/components/LoadingBranded";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { AlertCircle } from "lucide-react";
@@ -15,32 +15,32 @@ import type { Delegation } from "./dtos/dtos";
 import { useFoundationStore } from "./store/foundation-store";
 
 // Clear all authentication and foundation data
-function clearAllAuthData() {
-  console.log('🧹 clearAllAuthData called in FoundationsPage at:', new Date().toISOString());
-  console.trace('🧹 clearAllAuthData stack trace:');
+// function clearAllAuthData() {
+//   console.log('🧹 clearAllAuthData called in FoundationsPage at:', new Date().toISOString());
+//   console.trace('🧹 clearAllAuthData stack trace:');
 
-  // Clear localStorage
-  localStorage.removeItem("UserData");
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("x-foundation-id");
+//   // Clear localStorage
+//   localStorage.removeItem("UserData");
+//   localStorage.removeItem("accessToken");
+//   localStorage.removeItem("refreshToken");
+//   localStorage.removeItem("x-foundation-id");
 
-  // Clear Zustand stores
-  useFoundationStore.getState().clearSelectedFoundation();
+//   // Clear Zustand stores
+//   useFoundationStore.getState().clearSelectedFoundation();
 
-  // Clear other potential auth-related items
-  const keysToRemove = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && (key.includes('auth') || key.includes('foundation') || key.includes('token'))) {
-      keysToRemove.push(key);
-    }
-  }
-  console.log('🧹 Removing additional auth keys:', keysToRemove);
-  keysToRemove.forEach(key => localStorage.removeItem(key));
+//   // Clear other potential auth-related items
+//   const keysToRemove = [];
+//   for (let i = 0; i < localStorage.length; i++) {
+//     const key = localStorage.key(i);
+//     if (key && (key.includes('auth') || key.includes('foundation') || key.includes('token'))) {
+//       keysToRemove.push(key);
+//     }
+//   }
+//   console.log('🧹 Removing additional auth keys:', keysToRemove);
+//   keysToRemove.forEach(key => localStorage.removeItem(key));
 
-  console.log('🧹 clearAllAuthData completed');
-}
+//   console.log('🧹 clearAllAuthData completed');
+// }
 
 
 

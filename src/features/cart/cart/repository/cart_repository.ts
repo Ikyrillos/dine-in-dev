@@ -31,6 +31,7 @@ export interface CheckoutData {
     note?: string;
     discount?: number;
     source: "Dine-in" | "web",
+    paymentMethod?: string;
 }
 
 /**
@@ -64,6 +65,7 @@ class CartRepository {
             choiceIds: string[];
         }[];
     }) {
+        const foundationId = localStorage.getItem("x-foundation-id");
         return await makeRequest({
             method: "POST",
             url: `${BASE_URL}/pickup-cart`,
@@ -75,6 +77,7 @@ class CartRepository {
                     choiceIds: option.choiceIds,
                 })),
             },
+            headers: { "x-foundation-id": foundationId || "" },
             withCredentials: true,
         });
     }
@@ -84,14 +87,17 @@ class CartRepository {
      * @returns User cart data
      */
     async getCart() {
+        const foundationId = localStorage.getItem("x-foundation-id");
         const { data } = await makeRequest<unknown, ICart>({
             method: "GET",
-            url: `${BASE_URL}/pickup-cart`,
+            url: `${BASE_URL}/pickup-cart?populate=menuItem`,
+            headers: { "x-foundation-id": foundationId || "" },
         });
         return data;
     }
 
-    async postCheckout({ successUrl, failUrl, addressId, note, discount }: CheckoutData): Promise<CheckoutResponse> {
+    async postCheckout({ successUrl, failUrl, addressId, note, discount, paymentMethod }: CheckoutData): Promise<CheckoutResponse> {
+        const foundationId = localStorage.getItem("x-foundation-id");
         const { data } = await makeRequest<CheckoutData, CheckoutResponse>({
             method: "POST",
             url: `${BASE_URL}/pickup-cart/checkout`,
@@ -102,7 +108,9 @@ class CartRepository {
                 note,
                 discount: discount,
                 source: 'Dine-in',
+                paymentMethod: paymentMethod || "cash",
             },
+            headers: { "x-foundation-id": foundationId || "" },
         });
         return data;
     };
@@ -148,9 +156,11 @@ class CartRepository {
      * @returns Response after clearing the cart
      */
     async clearCart() {
+        const foundationId = localStorage.getItem("x-foundation-id");
         return await makeRequest<void, unknown>({
             method: "DELETE",
             url: `${BASE_URL}/pickup-cart`,
+            headers: { "x-foundation-id": foundationId || "" },
         });
     }
 
@@ -161,10 +171,12 @@ class CartRepository {
      * @returns Response from the cart
      */
     async updateItemQuantity(itemId: string, quantity: number) {
+        const foundationId = localStorage.getItem("x-foundation-id");
         return await makeRequest<{ quantity: number }, unknown>({
             method: "PUT",
             url: `${BASE_URL}/pickup-cart/items/${itemId}`,
             data: { quantity },
+            headers: { "x-foundation-id": foundationId || "" },
         });
     }
 
@@ -174,9 +186,11 @@ class CartRepository {
      * @returns Response after removing the item
      */
     async removeItemFromCart(itemId: string) {
+        const foundationId = localStorage.getItem("x-foundation-id");
         return await makeRequest<void, unknown>({
             method: "DELETE",
             url: `${BASE_URL}/pickup-cart/items/${itemId}`,
+            headers: { "x-foundation-id": foundationId || "" },
         });
     }
 }

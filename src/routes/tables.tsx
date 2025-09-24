@@ -2,6 +2,7 @@
 
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import TawilaShimmer from "@/components/LoadingBranded";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -243,13 +244,7 @@ export default function TableSelection() {
   const cartItems = cart?.items || [];
 
   if (isRestaurantLoading || isTablesLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-lg text-muted-foreground">
-          Loading restaurant data...
-        </p>
-      </div>
-    );
+    return <TawilaShimmer />;
   }
 
   return (

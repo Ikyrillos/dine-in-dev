@@ -1,7 +1,7 @@
 "use client";
 
 import CategoryChooserDialog from "@/components/CategoriesDialog";
-import { Spinner } from "@/components/Spinner";
+import TawilaShimmer from "@/components/LoadingBranded";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,9 +28,11 @@ import { getTableCheckoutData, setTableCheckoutData } from "@/utils/table-checko
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  Banknote,
   Check,
   ChevronDown,
   ChevronUp,
+  CreditCard,
   Minus,
   Plus,
   Search,
@@ -81,6 +83,7 @@ export default function Menu() {
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [selectedTable] = useState("");
   const [currentOptionIndex, setCurrentOptionIndex] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<
@@ -386,10 +389,10 @@ export default function Menu() {
     }
   };
 
-  // Conditional checkout
-  const handleCheckout = () => {
+  // Payment method selection for pickup orders
+  const handlePaymentMethodSelect = (method: "cash" | "card") => {
     if (isPickupOrder) {
-      // Pickup checkout
+      // Pickup checkout with payment method using direct API call
       cartApi.postCheckout({
         failUrl: "https://www.secondserving.uk/",
         successUrl: "https://www.secondserving.uk/",
@@ -397,11 +400,22 @@ export default function Menu() {
         note: notes,
         discount: discount,
         source: "Dine-in",
+        paymentMethod: method,
       }).then((response) => {
         if (response._id) {
           clearPickupCart.mutate();
         }
       });
+    }
+    setShowPaymentOptions(false);
+    setShowConfirmDialog(false);
+  };
+
+  // Conditional checkout
+  const handleCheckout = () => {
+    if (isPickupOrder) {
+      // For pickup orders, show payment options instead of direct checkout
+      setShowPaymentOptions(true);
     } else {
       // Table checkout - navigate back to tables (discount and notes are stored locally)
       navigate({ to: `/tables` });
@@ -410,7 +424,7 @@ export default function Menu() {
   };
 
   if (menuItemsLoading || categoriesLoading) {
-    return <Spinner />;
+    return <TawilaShimmer />;
   }
 
   const mainContent = (
@@ -713,7 +727,55 @@ export default function Menu() {
           {/* Cart View */}
           {!selectedItem && (
             <div className="px-6 py-6">
-              {cartItems.length === 0
+              {showPaymentOptions && isPickupOrder
+                ? (
+                  <div>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start h-12"
+                      onClick={() => setShowPaymentOptions(false)}
+                    >
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Back
+                    </Button>
+                    <h3 className="font-semibold text-gray-900 text-lg my-4 text-center">
+                      Payment
+                    </h3>
+
+                    {/* Payment Method Buttons */}
+                    <div className="space-y-3">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start h-14 text-base font-medium"
+                        onClick={() => handlePaymentMethodSelect("card")}
+                      >
+                        <CreditCard className="mr-3 h-5 w-5" />
+                        Card
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start h-14 text-base font-medium"
+                        onClick={() => handlePaymentMethodSelect("cash")}
+                      >
+                        <Banknote className="mr-3 h-5 w-5" />
+                        Cash
+                      </Button>
+                    </div>
+
+                    {/* Total Amount */}
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold text-gray-900">
+                          Total
+                        </span>
+                        <span className="text-xl font-bold text-primary">
+                          {currencySymbol}{totalAmount.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )
+                : cartItems.length === 0
                 ? (
                   <div className="text-center text-muted-foreground py-12">
                     <ShoppingCart className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -971,7 +1033,7 @@ export default function Menu() {
           </div>
         )
         : (
-          cartItems.length > 0 && (
+          cartItems.length > 0 && !showPaymentOptions && (
             <div className="sticky bottom-0 left-0 right-0 bg-white border-t px-6 py-4 space-y-4">
               <div>
                 <Label className="text-sm font-medium">

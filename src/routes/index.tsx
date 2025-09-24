@@ -8,6 +8,7 @@ import { useAuth } from "@/core/hooks/use-auth"
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
 import { AlertCircle, Eye, EyeOff } from "lucide-react"
 import { useEffect, useState } from "react"
+import TawilaShimmer from "@/components/LoadingBranded"
 
 
 export const Route = createFileRoute("/")({
@@ -40,11 +41,7 @@ export default function SignIn() {
   }, [isLoading, isAuthenticated, navigate])
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div>Loading...</div>
-      </div>
-    )
+    return <TawilaShimmer />
   }
 
   const handleSignIn = async (e: React.FormEvent) => {

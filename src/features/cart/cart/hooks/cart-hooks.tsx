@@ -193,3 +193,45 @@ export const useRemovePickupCartItem = () => {
     },
   });
 };
+
+// ---------------------
+// Checkout Pickup Cart
+// ---------------------
+export const useCheckoutPickupCart = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      successUrl,
+      failUrl,
+      addressId,
+      note,
+      discount,
+      paymentMethod
+    }: {
+      successUrl: string;
+      failUrl: string;
+      addressId?: string;
+      note?: string;
+      discount?: number;
+      paymentMethod: "cash" | "card";
+    }) => cartApi.postCheckout({
+      successUrl,
+      failUrl,
+      addressId,
+      note,
+      discount,
+      source: "Dine-in",
+      paymentMethod,
+    }),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [reactKeys.cart] });
+      queryClient.invalidateQueries({ queryKey: [reactKeys.cartBreakdown] });
+    },
+
+    onError: (error) => {
+      console.error("Error during pickup checkout:", error);
+    },
+  });
+};

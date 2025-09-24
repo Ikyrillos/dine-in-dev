@@ -2,6 +2,7 @@ import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { AuthProvider, useAuth } from './core/hooks/use-auth.tsx'
+import TawilaShimmer from './components/LoadingBranded'
 
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
@@ -43,7 +44,7 @@ function App() {
 
   // Don't render router until auth is loaded
   if (auth.isLoading) {
-    return <div>Loading...</div>; // Your loading component
+    return <TawilaShimmer />;
   }
 
   return <RouterProvider router={router} context={{ auth }} />;

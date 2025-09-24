@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import TawilaShimmer from "@/components/LoadingBranded";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { AlertCircle } from "lucide-react";
@@ -123,7 +122,7 @@ export default function DelegationsPage() {
     fetchDelegations();
   }, [userId, auth, navigate]);
 
-  if (loading) return <DelegationsLoadingSkeleton />;
+  if (loading) return <TawilaShimmer />;
 
   if (error) {
     return (
@@ -173,30 +172,3 @@ export default function DelegationsPage() {
   );
 }
 
-function DelegationsLoadingSkeleton() {
-  return (
-    <div className="container mx-auto py-8">
-      <div className="mb-6">
-        <Skeleton className="h-10 w-64 mb-2" />
-        <Skeleton className="h-5 w-80" />
-      </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {[1, 2, 3].map((i) => (
-          <Card key={i}>
-            <Skeleton className="h-40 w-full" />
-            <CardHeader className="flex gap-4 items-center">
-              <Skeleton className="h-10 w-10 rounded-full" />
-              <div className="space-y-2 w-full">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-3 w-1/2" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-8 w-full" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}

@@ -172,31 +172,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Optional: Token refresh functionality (currently not used)
-  const refreshTokens = async (): Promise<boolean> => {
-    try {
-      const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-      if (!refreshToken) {
-        return false;
-      }
+  // const refreshTokens = async (): Promise<boolean> => {
+  //   try {
+  //     const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  //     if (!refreshToken) {
+  //       return false;
+  //     }
 
-      const response = await authApi.refreshToken(refreshToken);
-      if (response.data?.accessToken && response.data?.refreshToken) {
-        // Update tokens
-        localStorage.setItem(ACCESS_TOKEN_KEY, response.data.accessToken);
-        localStorage.setItem(REFRESH_TOKEN_KEY, response.data.refreshToken);
+  //     const response = await authApi.refreshToken(refreshToken);
+  //     if (response.data?.accessToken && response.data?.refreshToken) {
+  //       // Update tokens
+  //       localStorage.setItem(ACCESS_TOKEN_KEY, response.data.accessToken);
+  //       localStorage.setItem(REFRESH_TOKEN_KEY, response.data.refreshToken);
 
-        // Restart token validation with new tokens
-        startTokenValidation();
+  //       // Restart token validation with new tokens
+  //       startTokenValidation();
 
-        console.log('Tokens refreshed successfully');
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      return false;
-    }
-  };
+  //       console.log('Tokens refreshed successfully');
+  //       return true;
+  //     }
+  //     return false;
+  //   } catch (error) {
+  //     console.error('Token refresh failed:', error);
+  //     return false;
+  //   }
+  // };
 
   const signIn = async (credentials: { username: string; password: string }): Promise<boolean> => {
     try {

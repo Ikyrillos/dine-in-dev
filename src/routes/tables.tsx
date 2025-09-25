@@ -1,8 +1,8 @@
 "use client";
 
+import TawilaShimmer from "@/components/LoadingBranded";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import TawilaShimmer from "@/components/LoadingBranded";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -32,11 +32,13 @@ import { useAuth } from "@/core/hooks/use-auth";
 import { useGetRestaurantByIdParams } from "@/core/hooks/use-restaurant-hooks";
 import { useGetTables } from "@/core/hooks/use-tables-hooks";
 import type { Table } from "@/core/models/TableModel";
+import { useGetBreakDown } from "@/features/cart/cart/hooks/cart-hooks";
 import {
   clearTableCheckoutData,
   getTableCheckoutData,
 } from "@/utils/table-checkout-storage";
 
+import { DiscountDisplay } from "@/components/DiscountDisplay";
 import { authApi } from "@/core/repositories/auth-repository";
 import type { Delegation } from "@/features/foundations/dtos/dtos";
 import { useFoundationStore } from "@/features/foundations/store/foundation-store";
@@ -125,6 +127,11 @@ export default function TableSelection() {
 
   const clearCartMutation = useClearCart();
   const cartCheckout = useCheckoutCart();
+
+  // Get breakdown for discount display
+  const { data: breakdown } = useGetBreakDown(
+    discount > 0 ? discount.toString() : undefined,
+  );
 
   useEffect(() => {
     if (restaurant?.data) {
@@ -594,7 +601,17 @@ export default function TableSelection() {
                     {(selectedTable.status === "reserved" ||
                       (selectedTable.status === "occupied" &&
                         cartItems.length > 0)) && (
-                      <div className="p-6 border-b border-gray-200">
+                      <div className="p-2 border-b border-gray-200 space-y-4">
+                        {/* Discount Display */}
+                        {breakdown && discount > 0 && (
+                          <DiscountDisplay
+                            discount={breakdown.discount}
+                            subTotal={breakdown.subTotal || 0}
+                            totalAmount={breakdown.totalAmount}
+                            size="sm"
+                          />
+                        )}
+
                         <div className="flex justify-between items-center">
                           <span className="text-lg font-semibold text-gray-900">
                             Total

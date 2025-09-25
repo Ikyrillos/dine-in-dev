@@ -50,6 +50,7 @@ export interface BreakdownResponse {
     shippingCost: number;
     applicationFeeAmount: number;
     totalAmount: number;
+    subTotal?: number;
 }
 class CartRepository {
     /**
@@ -128,7 +129,7 @@ class CartRepository {
                 failUrl: string;
                 addressId?: string;
                 note?: string;
-                discount?: string;
+                discount?: number;
                 source: "web";
             }, BreakdownResponse>({
                 method: "POST",
@@ -138,7 +139,7 @@ class CartRepository {
                     failUrl: "",
                     addressId: addressId ? addressId : undefined,
                     note,
-                    discount,
+                    discount: discount ? parseFloat(discount) : 0,
                     source: "web",
                 },
             });

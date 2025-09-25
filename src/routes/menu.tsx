@@ -1,6 +1,7 @@
 "use client";
 
 import CategoryChooserDialog from "@/components/CategoriesDialog";
+import { DiscountDisplay } from "@/components/DiscountDisplay";
 import TawilaShimmer from "@/components/LoadingBranded";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -124,10 +125,31 @@ export default function Menu() {
   >({});
   const debouncedPickupQuantities = useDebounce(pickupQuantities, 500);
 
-  // Breakdown for pickup orders
-  const { data: breakdown } = useGetBreakDown(
-    discount.toString(),
+  // Breakdown - different logic for pickup vs table orders
+  const { data: pickupBreakdown } = useGetBreakDown(
+    isPickupOrder ? discount.toString() : undefined,
   );
+
+  // For table orders, we'll create a simple breakdown calculation
+  const tableBreakdown = useMemo(() => {
+    if (isPickupOrder || discount <= 0) return null;
+
+    const cartTotal = tableCartOps.cart?.totalAmount || 0;
+    const discountAmount = discount;
+    const newTotal = Math.max(0, cartTotal - discountAmount);
+
+    return {
+      discount: discountAmount * 100, // Convert to cents for consistency
+      subTotal: cartTotal * 100, // Convert to cents
+      totalAmount: newTotal * 100, // Convert to cents
+      tax: 0,
+      shippingCost: 0,
+      applicationFeeAmount: 0,
+    };
+  }, [isPickupOrder, discount, tableCartOps.cart?.totalAmount]);
+
+  // Use appropriate breakdown based on order type
+  const breakdown = isPickupOrder ? pickupBreakdown : tableBreakdown;
 
   // Handle debounced pickup cart updates
   useEffect(() => {
@@ -176,10 +198,17 @@ export default function Menu() {
         ? breakdown.totalAmount / 100
         : (pickupCart.data?.totalAmount || 0);
     }
+
+    // For table orders, use breakdown if discount is applied, otherwise use cart total
+    if (breakdown?.totalAmount && discount > 0) {
+      return breakdown.totalAmount / 100;
+    }
+
     return tableCartOps.cart?.totalAmount || 0;
   }, [
     isPickupOrder,
     breakdown?.totalAmount,
+    discount,
     pickupCart.data?.totalAmount,
     tableCartOps.cart?.totalAmount,
   ]);
@@ -762,6 +791,18 @@ export default function Menu() {
                       </Button>
                     </div>
 
+                    {/* Discount Display for all orders */}
+                    {breakdown && breakdown.discount > 0 && (
+                      <div className="mt-2">
+                        <DiscountDisplay
+                          discount={breakdown.discount}
+                          subTotal={breakdown.subTotal || 0}
+                          totalAmount={breakdown.totalAmount}
+                          size="md"
+                        />
+                      </div>
+                    )}
+
                     {/* Total Amount */}
                     <div className="mt-6 pt-6 border-t border-gray-200">
                       <div className="flex justify-between items-center">
@@ -973,6 +1014,18 @@ export default function Menu() {
                       )}
                   </div>
                 )}
+
+                {/* Discount Display for all orders */}
+                {breakdown && breakdown.discount > 0 && (
+                  <div className="mt-4">
+                    <DiscountDisplay
+                      discount={breakdown.discount}
+                      subTotal={breakdown.subTotal || 0}
+                      totalAmount={breakdown.totalAmount}
+                      size="sm"
+                    />
+                  </div>
+                )}
             </div>
           )}
         </ScrollArea>
@@ -1063,6 +1116,18 @@ export default function Menu() {
                   step="0.01"
                 />
               </div>
+
+              {/* Discount Display in Confirm Dialog */}
+              {breakdown && breakdown.discount > 0 && (
+                <div className="mb-2">
+                  <DiscountDisplay
+                    discount={breakdown.discount}
+                    subTotal={breakdown.subTotal || 0}
+                    totalAmount={breakdown.totalAmount}
+                    size="sm"
+                  />
+                </div>
+              )}
 
               <Separator />
               <div className="flex justify-between items-center">

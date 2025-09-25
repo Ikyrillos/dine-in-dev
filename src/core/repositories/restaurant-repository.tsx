@@ -72,6 +72,8 @@ export interface Restaurant {
     createdAt: Date;
     updatedAt: Date;
     links: CustomLink[];
+    //id of the menu
+    dineInMenu: string;
 }
 
 class RestaurantRepository {

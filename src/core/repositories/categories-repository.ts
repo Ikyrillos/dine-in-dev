@@ -78,7 +78,14 @@ class MenuCategoryRepository {
     }
 
 
-    async fetchMenuCategories() {
+    async fetchMenuCategories(menuId: string) {
+        return await makeRequest<void, IMenuCategory[]>({
+            method: 'GET',
+            url: `${BASE_URL}/menu-categories/by-menu/${menuId}`,
+        });
+    }
+
+    async fetchAllMenuCategories() {
         return await makeRequest<void, IMenuCategory[]>({
             method: 'GET',
             url: `${BASE_URL}/menu-categories`,

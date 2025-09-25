@@ -25,6 +25,7 @@ import { useCartOperations } from "@/core/hooks/cart_hooks";
 import { useGetMenuCategories } from "@/core/hooks/get-categories-hooks";
 import { useGetMenuItems } from "@/core/hooks/get-menu-items";
 import type { IMenuItem } from "@/core/models/IMenuItem";
+import { oldCartApi } from "@/core/repositories/cart_repository";
 import { getTableCheckoutData, setTableCheckoutData } from "@/utils/table-checkout-storage";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import {
@@ -445,9 +446,13 @@ export default function Menu() {
     if (isPickupOrder) {
       // For pickup orders, show payment options instead of direct checkout
       setShowPaymentOptions(true);
-    } else {
-      // Table checkout - navigate back to tables (discount and notes are stored locally)
-      navigate({ to: `/tables` });
+    }  else {
+      // Table checkout
+      oldCartApi.printPosOrder(tableId || "").then((response) => {
+        if (response) {
+          navigate({ to: `/tables` });
+        }
+      });
     }
     setShowConfirmDialog(false);
   };

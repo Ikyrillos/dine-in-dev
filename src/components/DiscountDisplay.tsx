@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { useCurrencyStore } from "@/features/cart/cart/stores/currency-store";
-import { CheckCircle2, Percent } from "lucide-react";
+import { AlertCircle, CheckCircle2, Percent } from "lucide-react";
 
 interface DiscountDisplayProps {
   discount: number;
@@ -12,6 +12,8 @@ interface DiscountDisplayProps {
 
 export function DiscountDisplay({
   discount,
+  subTotal,
+  totalAmount,
   showIcon = true,
   size = "md"
 }: DiscountDisplayProps) {
@@ -20,7 +22,25 @@ export function DiscountDisplay({
   if (discount <= 0) return null;
 
   const discountAmount = discount / 100;
+  const subTotalAmount = subTotal / 100;
   const iconSize = size === "sm" ? "h-3 w-3" : size === "lg" ? "h-5 w-5" : "h-4 w-4";
+
+  // Check if discount is bigger than subtotal
+  const isDiscountTooLarge = discountAmount > subTotalAmount;
+
+  if (isDiscountTooLarge) {
+    return (
+      <div className="flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded-md">
+        {showIcon && (
+          <AlertCircle className={`${iconSize} text-red-600`} />
+        )}
+        <span className="font-medium text-red-800 text-sm">Invalid Discount</span>
+        <Badge variant="destructive" className="bg-red-100 text-red-800 text-xs">
+          Discount cannot exceed total amount
+        </Badge>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-md">

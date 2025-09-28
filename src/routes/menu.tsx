@@ -136,7 +136,7 @@ export default function Menu() {
     if (isPickupOrder || discount <= 0) return null;
 
     const cartTotal = tableCartOps.cart?.totalAmount || 0;
-    const discountAmount = discount;
+    const discountAmount = cartTotal * (discount / 100); // Calculate discount as percentage of cart total
     const newTotal = Math.max(0, cartTotal - discountAmount);
 
     return {
@@ -1021,16 +1021,7 @@ export default function Menu() {
                 )}
 
                 {/* Discount Display for all orders */}
-                {breakdown && breakdown.discount > 0 && (
-                  <div className="mt-4">
-                    <DiscountDisplay
-                      discount={breakdown.discount}
-                      subTotal={breakdown.subTotal || 0}
-                      totalAmount={breakdown.totalAmount}
-                      size="sm"
-                    />
-                  </div>
-                )}
+
             </div>
           )}
         </ScrollArea>

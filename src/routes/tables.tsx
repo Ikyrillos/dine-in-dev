@@ -4,6 +4,16 @@ import TawilaShimmer from "@/components/LoadingBranded";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,7 +36,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   useCartOperations,
   useCheckoutCart,
-  useClearCart,
+  useClearCart
 } from "@/core/hooks/cart_hooks";
 import { useAuth } from "@/core/hooks/use-auth";
 import { useGetRestaurantByIdParams } from "@/core/hooks/use-restaurant-hooks";
@@ -40,14 +50,15 @@ import {
 
 import { DiscountDisplay } from "@/components/DiscountDisplay";
 import { authApi } from "@/core/repositories/auth-repository";
+import { useCurrencyStore } from "@/features/cart/cart/stores/currency-store";
 import type { Delegation } from "@/features/foundations/dtos/dtos";
 import { useFoundationStore } from "@/features/foundations/store/foundation-store";
 import {
   ArrowLeft,
   Banknote,
-  ChevronDown,
-  ChevronUp,
   CreditCard,
+  Minus,
+  Trash2
 } from "lucide-react";
 import { getSelectedChoiceNamesForItem } from "../features/cart/cart/models/cart-item-model";
 
@@ -72,8 +83,28 @@ export default function TableSelection() {
     data: restaurant,
     isLoading: isRestaurantLoading,
   } = useGetRestaurantByIdParams();
+  const { currencySymbol } = useCurrencyStore();
 
   const [delegations, setDelegations] = useState<Delegation[]>([]);
+  const updateCartItemQuantity = (
+    identifier: string,
+    newQuantity: number,
+    itemName: string
+  ) => {
+    if (newQuantity <= 0) {
+      handleRemoveItem(
+        identifier,
+        itemName,
+      );
+    } else {
+      tableCartOps.updateItem(identifier, { quantity: newQuantity });
+    }
+  };
+
+
+
+
+  // Fetch delegations on component mount
   useEffect(() => {
     const fetchDelegations = async () => {
       try {
@@ -95,6 +126,10 @@ export default function TableSelection() {
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
     {},
   );
+  const [itemToRemove, setItemToRemove] = useState<{
+    identifier: string;
+    name: string;
+  } | null>(null);
 
   const {
     data: tables,
@@ -102,13 +137,16 @@ export default function TableSelection() {
     refetch: refetchTables,
   } = useGetTables();
 
+
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
+
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [orderNotes, setOrderNotes] = useState("");
   const [discount, setDiscount] = useState<number>(0);
   const [restaurantData, setRestaurantData] = useState<any>(null);
   // toggle state (tab look)
   const [mode, setMode] = useState<"dine-in" | "pickup">("dine-in");
+  const tableCartOps = useCartOperations(selectedTable?.id || "");
 
   // sidebar size persist (like your source styling)
   const getSidebarSize = () => {
@@ -162,6 +200,26 @@ export default function TableSelection() {
     }
   }, [selectedTable]);
 
+  // use Effect if the current tBLE HAS NO ITEMS CLAER IT'S CART 
+  useEffect(() => {
+    if (cart && (cart?.items?.length ?? 0) === 0) {
+      tableCartOps.clearCart();
+      setOrderNotes("");
+      setDiscount(0);
+    }
+  }, [cart, selectedTable]);
+
+  const handleRemoveItem = (identifier: string, itemName: string) => {
+    setItemToRemove({ identifier, name: itemName });
+  };
+
+  const confirmRemoveItem = () => {
+    if (itemToRemove) {
+      console.log("Removing item with identifier:", itemToRemove.identifier);
+      tableCartOps.removeItem(itemToRemove.identifier)
+      setItemToRemove(null);
+    }
+  };
   // EXACT tile colors per screenshot
   const getTableColor = (status: string) => {
     switch (status) {
@@ -513,80 +571,57 @@ export default function TableSelection() {
                         )
                         : (
                           <div className="">
-                            {cartItems.map((cartItem) => (
+                            {cartItems.map((item) => (
                               <Card
-                                key={cartItem.optionsHash}
-                                className="border border-gray-200 mb-3"
+                                key={item.optionsHash}
+                                className="border-slate-200 my-2"
                               >
-                                <CardContent className="p-3">
+                                <CardContent className="">
                                   <div className="flex justify-between items-start">
-                                    <div>
-                                      <p className="font-medium text-sm">
-                                        {cartItem.menuItem?.name ?? "Item"}
-                                      </p>
-                                      <p className="text-xs text-gray-500">
-                                        Qty: {cartItem.quantity}
-                                      </p>
-                                      {getSelectedChoiceNamesForItem(cartItem)
-                                            .length >
-                                          0 && (
-                                        <div className="mt-2 w-full">
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() =>
-                                              setExpandedItems((prev) => ({
-                                                ...prev,
-                                                [cartItem.optionsHash]:
-                                                  !prev[cartItem.optionsHash],
-                                              }))}
-                                            className=" text-gray-600 hover:text-gray-800"
-                                          >
-                                            <span className="max-w-62 truncate inline-block text-left">
-                                              {getSelectedChoiceNamesForItem(
-                                                cartItem,
-                                              )
-                                                .join(", ")}
-                                            </span>
-                                            {expandedItems[cartItem.optionsHash]
-                                              ? (
-                                                <ChevronUp className="h-3 w-3 ml-1 flex-shrink-0" />
-                                              )
-                                              : (
-                                                <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
-                                              )}
-                                          </Button>
+                                    <h4 className="font-medium">
+                                      {item.menuItem.name}
+                                    </h4>
 
-                                          {expandedItems[
-                                            cartItem.optionsHash
-                                          ] && (
-                                            <div className="mt-2 pl-2 border-l-2 border-gray-100">
-                                              <div className="text-sm text-gray-600 space-y-1">
-                                                {getSelectedChoiceNamesForItem(
-                                                  cartItem,
-                                                )
-                                                  .map((choice, index) => (
-                                                    <div
-                                                      key={index}
-                                                      className="flex items-center w-full"
-                                                    >
-                                                      <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2">
-                                                      </span>
-                                                      {choice}
-                                                    </div>
-                                                  ))}
-                                              </div>
-                                            </div>
+                                  </div>
+                                  <p className="text-xs text-gray-600 truncate w-64">
+                                    {getSelectedChoiceNamesForItem(item)
+                                      .join(", ")}
+                                  </p>
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-bold text-primary">
+                                      {currencySymbol}
+                                      {item.totalPrice.toFixed(2)}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                          updateCartItemQuantity(
+                                            item.optionsHash,
+                                            item.quantity - 1,
+                                            item.menuItem.name
                                           )}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center">
-                                      <span className="font-bold text-primary">
-                                        £{Number(cartItem.totalPrice).toFixed(
-                                          2,
-                                        )}
+                                        className="h-8 w-8 p-0"
+                                      >
+                                        <Minus className="h-3 w-3" />
+                                      </Button>
+                                      <span className="w-8 text-center">
+                                        {item.quantity}
                                       </span>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          handleRemoveItem(
+                                            item.optionsHash,
+                                            item.menuItem.name
+                                          )}
+                                        className="text-destructive hover:text-destructive"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+
                                     </div>
                                   </div>
                                 </CardContent>
@@ -664,8 +699,30 @@ export default function TableSelection() {
                 </div>
               )}
           </div>
+
         </ResizablePanel>
       </ResizablePanelGroup>
+
+      <AlertDialog open={!!itemToRemove} onOpenChange={() => setItemToRemove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Item</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove "{itemToRemove?.name}" from the order? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRemoveItem}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import type { ICartItem } from "@/features/cart/cart/models/cart-item-model";
-import type { IOption } from "../IMenuItem";
+import type { IMenuItem, IOption } from "../IMenuItem";
 
 // ✅ make types match API response
 export interface CartItemOption {
@@ -35,9 +35,46 @@ export interface Cart {
   updatedAt: string;
 }
 
+// Local cart types for new implementation
+export interface LocalCartItem {
+  menuItem: IMenuItem;
+  quantity: number;
+  selectedOptions: CartItemOption[];
+  optionsHash: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Base interface for cart operations
+interface BaseCartOperation {
+  action: 'add-item' | 'remove-item' | 'update-item';
+  data: AddToCartDto | UpdateCartItemDto | null;
+}
+
+// Add item operation (no optionsHash required)
+interface AddItemOperation extends BaseCartOperation {
+  action: 'add-item';
+  data: AddToCartDto;
+}
+
+// Update item operation (requires optionsHash)
+interface UpdateItemOperation extends BaseCartOperation {
+  action: 'update-item';
+  optionsHash: string;
+  data: UpdateCartItemDto;
+}
+
+// Remove item operation (requires optionsHash)
+interface RemoveItemOperation extends BaseCartOperation {
+  action: 'remove-item';
+  optionsHash: string;
+  data: null;
+}
+
+export type BatchCartOperation = AddItemOperation | UpdateItemOperation | RemoveItemOperation;
 
 // DTOs for API requests
-export interface AddItemToCartDto {
+export interface AddToCartDto {
     menuItemId: string;
     quantity: number;
     selectedOptions: CartItemOption[];

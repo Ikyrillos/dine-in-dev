@@ -21,9 +21,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { useCartOperations } from "@/core/hooks/cart_hooks";
 import { useGetMenuCategories } from "@/core/hooks/get-categories-hooks";
 import { useGetMenuItems } from "@/core/hooks/get-menu-items";
+import type { CartItemOption } from "@/core/models/dtos/cart-dtos";
 import type { IMenuItem } from "@/core/models/IMenuItem";
 import { oldCartApi } from "@/core/repositories/cart_repository";
 import { getTableCheckoutData, setTableCheckoutData } from "@/utils/table-checkout-storage";
@@ -41,24 +41,18 @@ import {
   ShoppingCart,
   Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ResizableLayout } from "../components/resizable-layout";
 import {
-  useAddToCart,
-  useClearCart,
-  useGetBreakDown,
-  useGetCart,
-  useRemovePickupCartItem,
-  useUpdateCartItemQuantity,
-} from "../features/cart/cart/hooks/cart-hooks";
-import {
-  getSelectedChoiceNamesForItem,
-  type ICartItem,
-} from "../features/cart/cart/models/cart-item-model";
+  useAddToLocalCart,
+  useClearLocalCart,
+  useLocalCart,
+  useRemoveFromLocalCart,
+  useSubmitCartOperations,
+  useUpdateLocalCartItem,
+} from "../features/cart/cart/hooks/local-cart-hooks";
 import { cartApi } from "../features/cart/cart/repository/cart_repository";
 import { useCurrencyStore } from "../features/cart/cart/stores/currency-store";
-import { useDebounce } from "../features/cart/cart/stores/use_debounce";
-import { getUnprintedItems } from "../features/cart/cart/utils/printed-items-util";
 
 // Import pickup cart hooks and utilities
 
@@ -76,7 +70,6 @@ export const Route = createFileRoute("/menu")({
 
 export default function Menu() {
   const navigate = useNavigate();
-  const pendingUpdatesRef = useRef<Set<string>>(new Set());
 
   // Local state
   const [searchQuery, setSearchQuery] = useState("");
@@ -108,34 +101,26 @@ export default function Menu() {
   const { data: categories, isLoading: categoriesLoading } =
     useGetMenuCategories();
   const { data: menuItems, isLoading: menuItemsLoading } = useGetMenuItems();
-  const clearPickupCart = useClearCart();
 
-  // Conditional cart hooks based on order type
-  const tableCartOps = useCartOperations(tableId ?? "");
-
-  // Pickup cart hooks (only used for pickup orders)
-  const pickupCart = useGetCart();
-  const addToPickupCart = useAddToCart();
-  const updatePickupCartQuantity = useUpdateCartItemQuantity();
-  const removeFromPickupCart = useRemovePickupCartItem();
+  // Local cart hooks (used for both pickup and table orders)
+  const { addItem } = useAddToLocalCart();
+  const { removeItem } = useRemoveFromLocalCart();
+  const { updateQuantity } = useUpdateLocalCartItem();
+  const { clearCart } = useClearLocalCart();
+  const { items: localCartItems, totalAmount: localCartTotal, loadFromLocalStorage } = useLocalCart();
+  const submitCartOperations = useSubmitCartOperations(isPickupOrder ? undefined : tableId || undefined);
   const { currencySymbol } = useCurrencyStore();
 
-  // Pickup cart state for debounced updates
-  const [pickupQuantities, setPickupQuantities] = useState<
-    Record<string, number>
-  >({});
-  const debouncedPickupQuantities = useDebounce(pickupQuantities, 500);
-
-  // Breakdown - different logic for pickup vs table orders
-  const { data: pickupBreakdown } = useGetBreakDown(
-    isPickupOrder ? discount.toString() : undefined,
-  );
+  // Load local cart on component mount
+  useEffect(() => {
+    loadFromLocalStorage();
+  }, [loadFromLocalStorage]);
 
   // For table orders, we'll create a simple breakdown calculation
   const tableBreakdown = useMemo(() => {
-    if (isPickupOrder || discount <= 0) return null;
+    if (discount <= 0) return null;
 
-    const cartTotal = tableCartOps.cart?.totalAmount || 0;
+    const cartTotal = localCartTotal;
     const discountAmount = cartTotal * (discount / 100); // Calculate discount as percentage of cart total
     const newTotal = Math.max(0, cartTotal - discountAmount);
 
@@ -147,25 +132,11 @@ export default function Menu() {
       shippingCost: 0,
       applicationFeeAmount: 0,
     };
-  }, [isPickupOrder, discount, tableCartOps.cart?.totalAmount]);
+  }, [discount, localCartTotal]);
 
-  // Use appropriate breakdown based on order type
-  const breakdown = isPickupOrder ? pickupBreakdown : tableBreakdown;
+  // Use breakdown based on discount
+  const breakdown = tableBreakdown;
 
-  // Handle debounced pickup cart updates
-  useEffect(() => {
-    if (isPickupOrder) {
-      Object.entries(debouncedPickupQuantities).forEach(
-        ([itemId]) => {
-          // Only update if we have a pending update for this item
-          if (pendingUpdatesRef.current.has(itemId)) {
-            pendingUpdatesRef.current.delete(itemId);
-            // updatePickupCartQuantity.mutate({ itemId, quantity });
-          }
-        },
-      );
-    }
-  }, [debouncedPickupQuantities, isPickupOrder, updatePickupCartQuantity]);
 
   // Load stored checkout data for table orders when component mounts or tableId changes
   useEffect(() => {
@@ -185,33 +156,20 @@ export default function Menu() {
     }
   }, [discount, notes, tableId, isPickupOrder, dataLoaded]);
 
-  // Get appropriate cart data based on order type
-  const cartItems = useMemo(() => {
-    if (isPickupOrder) {
-      return pickupCart.data?.items || [];
-    }
-    return getUnprintedItems(tableCartOps.cart?.items || [], tableCartOps.cart?.printedItems || []) as ICartItem[];
-  }, [isPickupOrder, pickupCart.data?.items, tableCartOps.cart?.items]);
+  // Get cart data from local cart
+  const cartItems = localCartItems;
 
   const totalAmount = useMemo(() => {
-    if (isPickupOrder) {
-      return breakdown?.totalAmount
-        ? breakdown.totalAmount / 100
-        : (pickupCart.data?.totalAmount || 0);
-    }
-
-    // For table orders, use breakdown if discount is applied, otherwise use cart total
+    // Use breakdown if discount is applied, otherwise use local cart total
     if (breakdown?.totalAmount && discount > 0) {
       return breakdown.totalAmount / 100;
     }
 
-    return tableCartOps.cart?.totalAmount || 0;
+    return localCartTotal;
   }, [
-    isPickupOrder,
     breakdown?.totalAmount,
     discount,
-    pickupCart.data?.totalAmount,
-    tableCartOps.cart?.totalAmount,
+    localCartTotal,
   ]);
 
   // Computed values
@@ -257,6 +215,60 @@ export default function Menu() {
     setSelectedOptions({});
   };
 
+  // Helper function to get selected choice names for local cart items
+  const getSelectedChoiceNamesForLocalCartItem = (localCartItem: any): string[] => {
+    const selectedChoices: string[] = [];
+    const menuItem = localCartItem.menuItem;
+    const optionsMap: Record<string, any> = {};
+
+    // Create a map of optionId to options
+    menuItem.options?.forEach((option: any) => {
+      optionsMap[option._id] = option;
+    });
+
+    // Iterate over selected options
+    localCartItem.selectedOptions?.forEach((selectedOption: any) => {
+      const option = optionsMap[selectedOption.optionId];
+      if (option) {
+        const choiceMap: Record<string, string> = {};
+
+        // Create a map of choiceId to choice name
+        option.choices?.forEach((choice: any) => {
+          choiceMap[choice._id] = choice.name;
+        });
+
+        // Retrieve selected choice names
+        selectedOption.choiceIds.forEach((choiceId: string) => {
+          if (choiceMap[choiceId]) {
+            selectedChoices.push(choiceMap[choiceId]);
+          }
+        });
+      }
+    });
+
+    return selectedChoices;
+  };
+
+  // Helper function to calculate local cart item total price
+  const calculateLocalCartItemTotalPrice = (localCartItem: any): number => {
+    const basePrice = localCartItem.menuItem.price * localCartItem.quantity;
+    let optionsPrice = 0;
+
+    localCartItem.selectedOptions?.forEach((selectedOption: any) => {
+      const option = localCartItem.menuItem.options?.find((opt: any) => opt._id === selectedOption.optionId);
+      if (option) {
+        selectedOption.choiceIds.forEach((choiceId: string) => {
+          const choice = option.choices?.find((c: any) => c._id === choiceId);
+          if (choice) {
+            optionsPrice += choice.price || 0;
+          }
+        });
+      }
+    });
+
+    return basePrice + (optionsPrice * localCartItem.quantity);
+  };
+
   const startConfigForItem = (item: any) => {
     setSelectedItem(item);
     setQuantity(1);
@@ -289,15 +301,6 @@ export default function Menu() {
     });
   };
 
-  useEffect(() => {
-    if (isPickupOrder && pickupCart.data?.items) {
-      const initialQuantities: Record<string, number> = {};
-      pickupCart.data.items.forEach((item: any) => {
-        initialQuantities[item.optionsHash] = item.quantity;
-      });
-      setPickupQuantities(initialQuantities);
-    }
-  }, [isPickupOrder, pickupCart.data?.items]);
 
   const canProceed = () => {
     if (!currentOption) return true;
@@ -338,28 +341,15 @@ export default function Menu() {
     if (!selectedItem) return;
 
     if (isLastStep || selectedItem.options.length === 0) {
-      const cartItemOptions = Object.entries(selectedOptions).map((
+      const cartItemOptions: CartItemOption[] = Object.entries(selectedOptions).map((
         [optionId, choiceIds],
       ) => ({
         optionId,
         choiceIds: Array.isArray(choiceIds) ? choiceIds : [choiceIds],
       }));
 
-      if (isPickupOrder) {
-        // Use pickup cart logic
-        addToPickupCart.mutate({
-          menuItemId: selectedItem._id,
-          quantity,
-          selectedOptions: cartItemOptions,
-        });
-      } else {
-        // Use table cart logic
-        tableCartOps.addItem({
-          menuItemId: selectedItem._id,
-          quantity,
-          selectedOptions: cartItemOptions,
-        });
-      }
+      // Use local cart for both pickup and table orders
+      addItem(selectedItem, quantity, cartItemOptions);
 
       setSelectedItem(null);
       resetConfiguration();
@@ -371,90 +361,75 @@ export default function Menu() {
   const incQty = () => setQuantity((prev) => prev + 1);
   const decQty = () => setQuantity((prev) => Math.max(1, prev - 1));
 
-  // Conditional cart item quantity update
+  // Local cart item quantity update
   const updateCartItemQuantity = (
-    identifier: string,
+    optionsHash: string,
     newQuantity: number,
   ) => {
-    if (isPickupOrder) {
-      if (newQuantity <= 0) {
-        removeFromPickupCart.mutate(identifier);
-        // Clean up pending updates and local state
-        pendingUpdatesRef.current.delete(identifier);
-        setPickupQuantities((prev) => {
-          const newQuantities = { ...prev };
-          delete newQuantities[identifier];
-          return newQuantities;
-        });
-      } else {
-        // Mark this item as having a pending update
-        pendingUpdatesRef.current.add(identifier);
-        setPickupQuantities((prev) => ({ ...prev, quantity: newQuantity }));
-        updatePickupCartQuantity.mutate({
-          itemId: identifier,
-          quantity: newQuantity,
-        });
-      }
-    } else {
-      if (newQuantity <= 0) {
-        tableCartOps.removeItem(identifier);
-      } else {
-        tableCartOps.updateItem(identifier, { quantity: newQuantity });
-      }
-    }
+    updateQuantity(optionsHash, newQuantity);
   };
 
-  // Conditional cart item removal
-  const handleRemoveItem = (identifier: string) => {
-    console.log("Removing item with identifier:", identifier);
-    if (isPickupOrder) {
-      removeFromPickupCart.mutate(identifier);
-      setPickupQuantities((prev) => {
-        const newQuantities = { ...prev };
-        delete newQuantities[identifier];
-        return newQuantities;
-      });
-    } else {
-      tableCartOps.removeItem(identifier);
-    }
+  // Local cart item removal
+  const handleRemoveItem = (optionsHash: string) => {
+    removeItem(optionsHash);
   };
 
   // Payment method selection for pickup orders
-  const handlePaymentMethodSelect = (method: "cash" | "card") => {
-    if (isPickupOrder) {
-      // Pickup checkout with payment method using direct API call
-      cartApi.postCheckout({
-        failUrl: "https://www.secondserving.uk/",
-        successUrl: "https://www.secondserving.uk/",
-        addressId: "",
-        note: notes,
-        discount: discount,
-        source: "Dine-in",
-        paymentMethod: method,
-      }).then((response) => {
+  const handlePaymentMethodSelect = async (method: "cash" | "card") => {
+    try {
+      // First submit the local cart operations to the server
+      await submitCartOperations.mutateAsync();
+
+      if (isPickupOrder) {
+  // Pickup checkout with payment method using direct API call
+        const response = await cartApi.postCheckout({
+          failUrl: "https://www.secondserving.uk/",
+          successUrl: "https://www.secondserving.uk/",
+          addressId: "",
+          note: notes,
+          discount: discount,
+          source: "Dine-in",
+          paymentMethod: method,
+        });
+
         if (response._id) {
-          clearPickupCart.mutate();
+          clearCart();
+          navigate({ to: `/tables` });
         }
-      });
+      }
+    } catch (error) {
+      console.error("Error during checkout:", error);
+    } finally {
+      setShowPaymentOptions(false);
+      setShowConfirmDialog(false);
     }
-    setShowPaymentOptions(false);
-    setShowConfirmDialog(false);
   };
 
   // Conditional checkout
-  const handleCheckout = () => {
-    if (isPickupOrder) {
-      // For pickup orders, show payment options instead of direct checkout
-      setShowPaymentOptions(true);
-    }  else {
-      // Table checkout
-      oldCartApi.printPosOrder(tableId || "").then((response) => {
+  const handleCheckout = async () => {
+    try {
+      // Submit local cart operations to server
+      await submitCartOperations.mutateAsync();
+
+      if (isPickupOrder) {
+        // For pickup orders, show payment options instead of direct checkout
+        setShowPaymentOptions(true);
+        return;
+      } else {
+        // Table checkout
+        const response = await oldCartApi.printPosOrder(tableId || "");
         if (response) {
+          clearCart();
           navigate({ to: `/tables` });
         }
-      });
+      }
+    } catch (error) {
+      console.error("Error during checkout:", error);
+    } finally {
+      if (!isPickupOrder) {
+        setShowConfirmDialog(false);
+      }
     }
-    setShowConfirmDialog(false);
   };
 
   if (menuItemsLoading || categoriesLoading) {
@@ -831,192 +806,116 @@ export default function Menu() {
                 )
                 : (
                   <div className="space-y-4">
-                    {isPickupOrder
-                      ? (
-                        // Pickup cart items using CartItemCard
-                        <div>
-                          {cartItems.map((item: any) => (
-                            (
-                              <Card
-                                key={item.optionsHash}
-                                className="border-slate-200 my-2"
-                              >
-                                <CardContent className="">
-                                  <div className="flex justify-between items-start">
-                                    <h4 className="font-medium">
-                                      {item.menuItem.name}
-                                    </h4>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() =>
-                                        handleRemoveItem(
-                                          item.optionsHash,
-                                        )}
-                                      className="text-destructive hover:text-destructive"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                  <p className="text-xs text-gray-600 truncate w-64">
-                                    {getSelectedChoiceNamesForItem(item)
-                                      .join(", ")}
-                                  </p>
-                                  <div className="flex justify-between items-center">
-                                    <span className="font-bold text-primary">
-                                      {currencySymbol}
-                                      {item.totalPrice.toFixed(2)}
-                                    </span>
-                                    <div className="flex items-center gap-2">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() =>
-                                          updateCartItemQuantity(
-                                            item.optionsHash,
-                                            item.quantity - 1,
-                                          )}
-                                        className="h-8 w-8 p-0"
-                                      >
-                                        <Minus className="h-3 w-3" />
-                                      </Button>
-                                      <span className="w-8 text-center">
-                                        {item.quantity}
-                                      </span>
+                      {cartItems.map((cartItem) => (
+                        <Card
+                          key={cartItem.optionsHash}
+                          className="border-slate-200"
+                        >
+                          <CardContent className="">
+                            <div className="flex justify-between items-start">
+                              <h4 className="font-medium">
+                                {cartItem.menuItem.name}
+                              </h4>
 
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() =>
-                                          updateCartItemQuantity(
-                                            item.optionsHash,
-                                            item.quantity + 1,
-                                          )}
-                                        className="h-8 w-8 p-0"
-                                      >
-                                        <Plus className="h-3 w-3" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            )
-                          ))}
-                        </div>
-                      )
-                      : (
-                        // Table cart items
-                        cartItems.map((cartItem: ICartItem) => (
-                          <Card
-                            key={cartItem.optionsHash}
-                            className="border-slate-200"
-                          >
-                            <CardContent className="">
-                              <div className="flex justify-between items-start">
-                                <h4 className="font-medium">
-                                  {cartItem.menuItem.name}
-                                </h4>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                handleRemoveItem(
+                                  cartItem.optionsHash,
+                                )}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
 
+                          {/* Expandable Options Section - Only show if there are options */}
+                          {getSelectedChoiceNamesForLocalCartItem(cartItem).length >
+                            0 && (
+                              <div className="mt-2 w-full">
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() =>
-                                    handleRemoveItem(
-                                      cartItem.optionsHash,
-                                    )}
-                                  className="text-destructive hover:text-destructive"
+                                    setExpandedItems((prev) => ({
+                                      ...prev,
+                                      [cartItem.optionsHash]:
+                                        !prev[cartItem.optionsHash],
+                                    }))}
+                                  className=" text-gray-600 hover:text-gray-800"
                                 >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-
-                              {/* Expandable Options Section - Only show if there are options */}
-                              {getSelectedChoiceNamesForItem(cartItem).length >
-                                  0 && (
-                                <div className="mt-2 w-full">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() =>
-                                      setExpandedItems((prev) => ({
-                                        ...prev,
-                                        [cartItem.optionsHash]:
-                                          !prev[cartItem.optionsHash],
-                                      }))}
-                                    className=" text-gray-600 hover:text-gray-800"
-                                  >
-                                    <span className="max-w-80 truncate inline-block text-left">
-                                      {getSelectedChoiceNamesForItem(cartItem)
-                                        .join(", ")}
-                                    </span>
-                                    {expandedItems[cartItem.optionsHash]
-                                      ? (
-                                        <ChevronUp className="h-3 w-3 ml-1 flex-shrink-0" />
-                                      )
-                                      : (
-                                        <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
-                                      )}
-                                  </Button>
-
-                                  {expandedItems[cartItem.optionsHash] && (
-                                    <div className="mt-2 pl-2 border-l-2 border-gray-100">
-                                      <div className="text-sm text-gray-600 space-y-1">
-                                        {getSelectedChoiceNamesForItem(cartItem)
-                                          .map((choice, index) => (
-                                            <div
-                                              key={index}
-                                              className="flex items-center w-full"
-                                            >
-                                              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2">
-                                              </span>
-                                              {choice}
-                                            </div>
-                                          ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-
-                              <div className="flex justify-between items-center mt-3">
-                                <span className="font-bold text-primary">
-                                  {currencySymbol}
-                                  {cartItem.totalPrice.toFixed(2)}
+                                  <span className="max-w-80 truncate inline-block text-left">
+                                  {getSelectedChoiceNamesForLocalCartItem(cartItem)
+                                    .join(", ")}
                                 </span>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                      updateCartItemQuantity(
-                                        cartItem.optionsHash,
-                                        cartItem.quantity - 1,
-                                      )}
-                                    className="h-8 w-8 p-0"
-                                  >
-                                    <Minus className="h-3 w-3" />
-                                  </Button>
-                                  <span className="w-8 text-center">
-                                    {cartItem.quantity}
-                                  </span>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                      updateCartItemQuantity(
-                                        cartItem.optionsHash,
-                                        cartItem.quantity + 1,
-                                      )}
-                                    className="h-8 w-8 p-0"
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                  </Button>
-                                </div>
+                                {expandedItems[cartItem.optionsHash]
+                                  ? (
+                                    <ChevronUp className="h-3 w-3 ml-1 flex-shrink-0" />
+                                  )
+                                  : (
+                                    <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
+                                  )}
+                              </Button>
+
+                              {expandedItems[cartItem.optionsHash] && (
+                                <div className="mt-2 pl-2 border-l-2 border-gray-100">
+                                  <div className="text-sm text-gray-600 space-y-1">
+                                      {getSelectedChoiceNamesForLocalCartItem(cartItem)
+                                        .map((choice, index) => (
+                                          <div
+                                            key={index}
+                                            className="flex items-center w-full"
+                                          >
+                                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2">
+                                            </span>
+                                            {choice}
+                                          </div>
+                                        ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                            </CardContent>
-                          </Card>
-                        ))
-                      )}
+                            )}
+
+                          <div className="flex justify-between items-center mt-3">
+                            <span className="font-bold text-primary">
+                              {currencySymbol}
+                              {calculateLocalCartItemTotalPrice(cartItem).toFixed(2)}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  updateCartItemQuantity(
+                                    cartItem.optionsHash,
+                                    cartItem.quantity - 1,
+                                  )}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span className="w-8 text-center">
+                                {cartItem.quantity}
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  updateCartItemQuantity(
+                                    cartItem.optionsHash,
+                                    cartItem.quantity + 1,
+                                  )}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 )}
 
@@ -1194,25 +1093,21 @@ export default function Menu() {
             <div className="space-y-4">
               {cartItems.map((cartItem: any) => (
                 <div
-                  key={isPickupOrder
-                    ? cartItem.optionsHash
-                    : cartItem.menuItem._id}
+                  key={cartItem.optionsHash}
                   className="flex justify-between items-center p-3 bg-slate-50 rounded-lg"
                 >
                   <div>
                     <p className="font-medium">
-                      {isPickupOrder
-                        ? cartItem.menuItem.name
-                        : cartItem.menuItem.name}
+                      {cartItem.menuItem.name}
                     </p>
                     <p className="text-sm text-muted-foreground truncate w-96">
-                      {getSelectedChoiceNamesForItem(cartItem).join(", ")}
+                      {getSelectedChoiceNamesForLocalCartItem(cartItem).join(", ")}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       Qty: {cartItem.quantity}
                     </p>
-                    {/* Show selected options for pickup orders */}
-                    {isPickupOrder && cartItem.selectedOptions?.length > 0 && (
+                    {/* Show selected options */}
+                    {cartItem.selectedOptions?.length > 0 && (
                       <div className="text-xs text-muted-foreground mt-1">
                         {cartItem.selectedOptions.map((option: any) => {
                           const optionData = cartItem.menuItem.options?.find((
@@ -1238,7 +1133,7 @@ export default function Menu() {
                   </div>
                   <p className="font-bold text-primary">
                     {currencySymbol}
-                    {cartItem.totalPrice.toFixed(2)}
+                    {calculateLocalCartItemTotalPrice(cartItem).toFixed(2)}
                   </p>
                 </div>
               ))}

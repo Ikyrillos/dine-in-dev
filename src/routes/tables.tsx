@@ -58,6 +58,7 @@ import {
   Banknote,
   CreditCard,
   Minus,
+  RefreshCcw,
   Trash2
 } from "lucide-react";
 import { getSelectedChoiceNamesForItem } from "../features/cart/cart/models/cart-item-model";
@@ -361,9 +362,21 @@ export default function TableSelection() {
               </div>
               <div className=" h-20">
                 <div className="px-4">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">
                     Note:
-                  </h3>
+                    </h3>
+
+                    <Button
+                      variant="outline"
+                      className="text-sm px-2 mb-3 h-8"
+                      onClick={() => navigate({
+                        reloadDocument: true
+                      })}
+                    >
+                      <RefreshCcw className="" />
+                    </Button>
+                  </div>
                   <div className="flex flex-wrap gap-4 text-sm">
                     <div className="flex items-center space-x-2">
                       <span className="w-5 h-5 rounded-md bg-primary">

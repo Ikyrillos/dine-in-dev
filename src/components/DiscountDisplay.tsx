@@ -13,7 +13,6 @@ interface DiscountDisplayProps {
 export function DiscountDisplay({
   discount,
   subTotal,
-  totalAmount,
   showIcon = true,
   size = "md"
 }: DiscountDisplayProps) {

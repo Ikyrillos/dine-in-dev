@@ -200,15 +200,6 @@ export default function TableSelection() {
     }
   }, [selectedTable]);
 
-  // use Effect if the current tBLE HAS NO ITEMS CLAER IT'S CART 
-  useEffect(() => {
-    if (cart && (cart?.items?.length ?? 0) === 0) {
-      tableCartOps.clearCart();
-      setOrderNotes("");
-      setDiscount(0);
-    }
-  }, [cart, selectedTable]);
-
   const handleRemoveItem = (identifier: string, itemName: string) => {
     setItemToRemove({ identifier, name: itemName });
   };
@@ -512,9 +503,7 @@ export default function TableSelection() {
 
                   <ScrollArea className="flex-1">
                     <div className="p-6">
-                      {selectedTable.status === "occupied" &&
-                        (cartItems?.length ?? 0) > 0 && (
-                        <Button
+                      <Button
                           variant="outline"
                           className="mb-4 w-full"
                           onClick={() => {
@@ -528,8 +517,7 @@ export default function TableSelection() {
                           }}
                         >
                           Clear Table
-                        </Button>
-                      )}
+                      </Button>
 
                       {showPaymentOptions
                         ? (

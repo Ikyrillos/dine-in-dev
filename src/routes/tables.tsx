@@ -124,9 +124,6 @@ export default function TableSelection() {
     fetchDelegations();
   }, [auth.user?.id]);
 
-  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
-    {},
-  );
   const [itemToRemove, setItemToRemove] = useState<{
     identifier: string;
     name: string;

@@ -1,18 +1,18 @@
-import React, { useEffect } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus, Minus } from 'lucide-react';
-import {
-  useAddToLocalCart,
-  useRemoveFromLocalCart,
-  useUpdateLocalCartItem,
-  useClearLocalCart,
-  useSubmitCartOperations,
-  useLocalCart
-} from '@/features/cart/cart/hooks/local-cart-hooks';
 import type { IMenuItem } from '@/core/models/IMenuItem';
 import type { CartItemOption } from '@/core/models/dtos/cart-dtos';
+import {
+  useAddToLocalCart,
+  useClearLocalCart,
+  useLocalCart,
+  useRemoveFromLocalCart,
+  useSubmitCartOperations,
+  useUpdateLocalCartItem
+} from '@/features/cart/cart/hooks/local-cart-hooks';
+import { Minus, Plus, Trash2 } from 'lucide-react';
+import React, { useEffect } from 'react';
 
 interface LocalCartExampleProps {
   menuItems?: IMenuItem[];

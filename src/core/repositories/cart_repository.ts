@@ -1,7 +1,7 @@
 import { BASE_URL } from "../apis-endpoints";
 import { makeRequest } from "../make-request";
 import type {
-    AddItemToCartDto,
+    AddToCartDto,
     Cart,
     UpdateCartItemDto,
 } from "../models/dtos/cart-dtos";
@@ -52,7 +52,7 @@ class CartRepository {
      * @param data Item addition data
      * @returns Updated cart data
      */
-    async addItemToTable(tableId: string, data: AddItemToCartDto) {
+    async addItemToTable(tableId: string, data: AddToCartDto) {
         const foundationId = localStorage.getItem("x-foundation-id");
         return await makeRequest<typeof data, Cart>({
             method: "POST",

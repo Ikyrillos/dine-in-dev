@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import type {
-    AddItemToCartDto,
+    AddToCartDto,
     Cart,
     UpdateCartItemDto,
 } from "../models/dtos/cart-dtos";
@@ -39,7 +39,7 @@ export const useAddItemToCart = () => {
 
     return useMutation({
         mutationFn: (
-            { tableId, data }: { tableId: string; data: AddItemToCartDto },
+            { tableId, data }: { tableId: string; data: AddToCartDto },
         ) => oldCartApi.addItemToTable(tableId, data),
         onSuccess: (response, { tableId }) => {
             // Update the cart data in cache with the response
@@ -182,7 +182,7 @@ export const useCartOperations = (tableId: string) => {
         error: cartQuery.error,
 
         // Mutations
-        addItem: (data: AddItemToCartDto) =>
+        addItem: (data: AddToCartDto) =>
             addItemMutation.mutate({ tableId, data }),
         updateItem: (optionsHash: string, data: UpdateCartItemDto) =>
             updateItemMutation.mutate({ optionsHash, data, tableId }),

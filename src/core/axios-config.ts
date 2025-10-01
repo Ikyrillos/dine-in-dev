@@ -1,9 +1,17 @@
+import { useAuthStore } from "@/stores/auth-store";
 import axios from "axios";
 import { BASE_URL } from "./apis-endpoints";
-import { useAuthStore } from "@/stores/auth-store";
 
 const baseURL = BASE_URL;
 const fallbackBaseURL = BASE_URL;
+
+// Token expiration handler
+let tokenExpirationHandler: (() => void) | null = null;
+
+// Function to set the token expiration handler
+export const setTokenExpirationHandler = (handler: () => void) => {
+    tokenExpirationHandler = handler;
+};
 
 export const axiosInterceptorInstance = axios.create({
     baseURL,
@@ -52,12 +60,18 @@ axiosInterceptorInstance.interceptors.response.use(
                 baseURL: error.config?.baseURL
             });
 
-            // Sign out user when receiving 401
-            const { signOut, accessToken } = useAuthStore.getState();
+            // Call the registered token expiration handler if available
+            if (tokenExpirationHandler) {
+                console.log('🚨 Calling registered token expiration handler');
+                tokenExpirationHandler();
+            } else {
+                // Fallback: Sign out user when receiving 401
+                const { signOut, accessToken } = useAuthStore.getState();
 
-            if (accessToken) {
-                console.log('🚨 Signing out user due to 401 error');
-                signOut();
+                if (accessToken) {
+                    console.log('🚨 Signing out user due to 401 error (fallback)');
+                    signOut();
+                }
             }
         }
 

@@ -55,6 +55,7 @@ interface BaseCartOperation {
 interface AddItemOperation extends BaseCartOperation {
   action: 'add-item';
   data: AddToCartDto;
+  optionsHash: string;
 }
 
 // Update item operation (requires optionsHash)

@@ -1,6 +1,6 @@
 // Environment-based API configuration
 // Uses VITE_APP_ENV for Vercel deployment environments
-const APP_ENV = import.meta.env.VITE_APP_ENV || process.env.NODE_ENV || "development";
+const APP_ENV = import.meta.env.VITE_APP_ENV || "production";
 
 export const BASE_URL = APP_ENV === "development"
     ? "https://api-dev.tawila.co.uk"

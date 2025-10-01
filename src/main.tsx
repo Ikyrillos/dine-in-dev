@@ -1,7 +1,7 @@
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
-import { AuthProvider, useAuth } from './core/hooks/use-auth.tsx'
+import { useAuthStore } from './stores/auth-store'
 import TawilaShimmer from './components/LoadingBranded'
 
 // Import the generated route tree
@@ -40,12 +40,20 @@ declare module '@tanstack/react-router' {
 }
 
 function App() {
-  const auth = useAuth();
+  const { isAuthenticated, signIn, signOut, isLoading, user } = useAuthStore();
 
   // Don't render router until auth is loaded
-  if (auth.isLoading) {
+  if (isLoading) {
     return <TawilaShimmer />;
   }
+
+  const auth = {
+    isAuthenticated,
+    signIn,
+    signOut,
+    isLoading,
+    user
+  };
 
   return <RouterProvider router={router} context={{ auth }} />;
 }
@@ -56,9 +64,7 @@ if (rootElement && !rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
   root.render(
     <StrictMode>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      <App />
     </StrictMode>,
   )
 }

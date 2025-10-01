@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useAuth } from "@/core/hooks/use-auth"
+import { useAuthStore, getAccessToken } from "@/stores/auth-store"
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
 import { AlertCircle, Eye, EyeOff } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -14,25 +14,16 @@ import TawilaShimmer from "@/components/LoadingBranded"
 export const Route = createFileRoute("/")({
   component: SignIn,
   beforeLoad: async () => {
-    // Check if user has a valid access token
-    const accessToken = localStorage.getItem("accessToken");
+    // Check if user has a valid access token using Zustand store
+    const accessToken = getAccessToken();
     if (accessToken) {
-      // Validate token before redirecting
-      try {
-        const payload = JSON.parse(atob(accessToken.split('.')[1]));
-        const currentTime = Math.floor(Date.now() / 1000);
-
-        // Only redirect if token is still valid
-        if (payload.exp > currentTime) {
-          throw redirect({
-            to: "/foundations",
-            replace: true,
-          });
-        }
-        // If token is expired, let user stay on login page
-      } catch (error) {
-        // Invalid token format, let user login
-        console.log('Invalid token format, staying on login page');
+      // Check if auth is still valid (including end-of-day check)
+      const { checkAuthValidity, isAuthenticated } = useAuthStore.getState();
+      if (isAuthenticated && checkAuthValidity()) {
+        throw redirect({
+          to: "/foundations",
+          replace: true,
+        });
       }
     }
   },
@@ -44,7 +35,7 @@ export default function SignIn() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const navigate = useNavigate()
-  const { signIn, isLoading, isAuthenticated } = useAuth()
+  const { signIn, isLoading, isAuthenticated } = useAuthStore()
 
   // Redirect if already logged in
   useEffect(() => {

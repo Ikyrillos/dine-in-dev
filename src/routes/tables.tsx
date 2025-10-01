@@ -38,11 +38,11 @@ import {
   useCheckoutCart,
   useClearCart
 } from "@/core/hooks/cart_hooks";
-import { useAuth } from "@/core/hooks/use-auth";
 import { useGetRestaurantByIdParams } from "@/core/hooks/use-restaurant-hooks";
 import { useGetTables } from "@/core/hooks/use-tables-hooks";
 import type { Table } from "@/core/models/TableModel";
 import { useGetBreakDown } from "@/features/cart/cart/hooks/cart-hooks";
+import { useAuthStore } from "@/stores/auth-store";
 import {
   clearTableCheckoutData,
   getTableCheckoutData,
@@ -66,8 +66,9 @@ import { getSelectedChoiceNamesForItem } from "../features/cart/cart/models/cart
 export const Route = createFileRoute("/tables")({
   component: TableSelection,
   beforeLoad: () => {
-    const accessToken = localStorage.getItem("accessToken");
-    if (!accessToken) {
+    // Check if user has valid authentication using Zustand store
+    const { checkAuthValidity, isAuthenticated } = useAuthStore.getState();
+    if (!isAuthenticated || !checkAuthValidity()) {
       throw redirect({
         to: "/",
         search: { redirect: "/tables" },
@@ -77,7 +78,7 @@ export const Route = createFileRoute("/tables")({
 });
 
 export default function TableSelection() {
-  const auth = useAuth();
+  const { user, signOut } = useAuthStore();
   const navigate = useNavigate();
   const clearSelectedFoundation = useFoundationStore(state => state.clearSelectedFoundation);
   const {
@@ -109,8 +110,8 @@ export default function TableSelection() {
   useEffect(() => {
     const fetchDelegations = async () => {
       try {
-        if (!auth.user?.id) return;
-        const response = await authApi.getUserDelegations(auth.user?.id);
+        if (!user?.id) return;
+        const response = await authApi.getUserDelegations(user?.id);
         setDelegations(response.data);
       } catch (err) {
         console.log(
@@ -122,7 +123,7 @@ export default function TableSelection() {
     };
 
     fetchDelegations();
-  }, [auth.user?.id]);
+  }, [user?.id]);
 
   const [itemToRemove, setItemToRemove] = useState<{
     identifier: string;
@@ -329,7 +330,7 @@ export default function TableSelection() {
                   <DropdownMenuContent align="start" className="w-56">
                     <div className="px-2 py-1.5">
                       <div className="font-medium">
-                        {auth.user?.firstName} {auth.user?.lastName}
+                        {user?.firstName} {user?.lastName}
                       </div>
                     </div>
                     <DropdownMenuSeparator />
@@ -345,7 +346,7 @@ export default function TableSelection() {
                     )}
                     <DropdownMenuItem
                       onClick={() => {
-                        auth.signOut();
+                        signOut();
                         navigate({ to: "/" });
                       }}
                     >

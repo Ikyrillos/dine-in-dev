@@ -8,7 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { AlertCircle } from "lucide-react";
 
-import { useAuth } from "@/core/hooks/use-auth";
+import { useAuthStore } from "@/stores/auth-store";
 import { authApi } from "@/core/repositories/auth-repository";
 import { FoundationCard } from "./components/FoundationCard";
 import type { Delegation } from "./dtos/dtos";
@@ -48,8 +48,8 @@ export default function DelegationsPage() {
   const [delegations, setDelegations] = useState<Delegation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const auth = useAuth();
-  const userId = auth.user?.id;
+  const { user, signOut } = useAuthStore();
+  const userId = user?.id;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const setSelectedFoundation = useFoundationStore(state => state.setSelectedFoundation);
@@ -73,9 +73,9 @@ export default function DelegationsPage() {
         if (!userId) {
           console.log('🚨 No userId in FoundationsPage - user not authenticated');
           setError("User not authenticated. Please sign in again.");
-          // Let the auth system handle logout properly with backup token preservation
-          console.log('🚨 Calling auth.signOut() from FoundationsPage');
-          auth.signOut();
+          // Let the auth system handle logout properly
+          console.log('🚨 Calling signOut() from FoundationsPage');
+          signOut();
           setTimeout(() => {
             navigate({ to: "/", replace: true });
           }, 1000);
@@ -124,7 +124,7 @@ export default function DelegationsPage() {
     };
 
     fetchDelegations();
-  }, [userId, auth, navigate]);
+  }, [userId, signOut, navigate]);
 
   if (loading) return <TawilaShimmer />;
 

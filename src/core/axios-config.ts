@@ -1,13 +1,6 @@
 import axios from "axios";
 import { BASE_URL } from "./apis-endpoints";
-
-// Global reference to handle token expiration
-let handleTokenExpiration: (() => void) | null = null;
-
-// Function to set the token expiration handler
-export const setTokenExpirationHandler = (handler: () => void) => {
-    handleTokenExpiration = handler;
-};
+import { useAuthStore } from "@/stores/auth-store";
 
 const baseURL = BASE_URL;
 const fallbackBaseURL = BASE_URL;
@@ -18,8 +11,7 @@ export const axiosInterceptorInstance = axios.create({
 });
 
 axiosInterceptorInstance.interceptors.request.use((config) => {
-    const accessToken = localStorage.getItem("accessToken");
-    const refreshToken = localStorage.getItem("refreshToken");
+    const { accessToken, refreshToken } = useAuthStore.getState();
 
     if (accessToken) {
         config.headers.Authorization = `Bearer ${accessToken.replaceAll('"', "")
@@ -53,24 +45,19 @@ axiosInterceptorInstance.interceptors.response.use(
 
         // Handle 401 errors (Unauthorized) - Token expired
         if (error.response.status === 401) {
-            console.log('🚨 401 Error - Token expired, triggering token expiration handler at:', new Date().toISOString());
+            console.log('🚨 401 Error - Token expired, signing out at:', new Date().toISOString());
             console.log('🚨 Request details:', {
                 url: error.config?.url,
                 method: error.config?.method,
                 baseURL: error.config?.baseURL
             });
 
-            // Only handle token expiration if we have a handler and there's an access token
-            const accessToken = localStorage.getItem("accessToken");
-            console.log('🚨 Handler available:', !!handleTokenExpiration);
-            console.log('🚨 Access token available:', !!accessToken);
+            // Sign out user when receiving 401
+            const { signOut, accessToken } = useAuthStore.getState();
 
-            if (handleTokenExpiration && accessToken) {
-                console.log('🚨 Calling token expiration handler from axios interceptor');
-                // Call the token expiration handler (shows dialog instead of auto-logout)
-                handleTokenExpiration();
-            } else {
-                console.log('🚨 Not calling handler - missing handler or token');
+            if (accessToken) {
+                console.log('🚨 Signing out user due to 401 error');
+                signOut();
             }
         }
 

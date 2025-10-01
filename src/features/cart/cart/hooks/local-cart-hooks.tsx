@@ -1,10 +1,10 @@
-import React from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocalCartStore } from "../stores/localCartStore";
-import { localCartApi } from "../repository/local_cart_repository";
-import { reactKeys } from "./cart-keys";
 import type { IMenuItem } from "@/core/models/IMenuItem";
 import type { CartItemOption } from "@/core/models/dtos/cart-dtos";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import React from "react";
+import { localCartApi } from "../repository/local_cart_repository";
+import { useLocalCartStore } from "../stores/localCartStore";
+import { reactKeys } from "./cart-keys";
 
 // Hook to add item to local cart
 export const useAddToLocalCart = () => {
@@ -142,6 +142,8 @@ export const useSyncCartWithServer = () => {
 export const useLocalCart = () => {
   const items = useLocalCartStore(state => state.items);
   const operations = useLocalCartStore(state => state.operations);
+  const currentTableId = useLocalCartStore(state => state.currentTableId);
+  const setCurrentTableId = useLocalCartStore(state => state.setCurrentTableId);
   const getTotalAmount = useLocalCartStore(state => state.getTotalAmount);
   const getItemByHash = useLocalCartStore(state => state.getItemByHash);
   const loadFromLocalStorage = useLocalCartStore(state => state.loadFromLocalStorage);
@@ -149,6 +151,8 @@ export const useLocalCart = () => {
   return {
     items,
     operations,
+    currentTableId,
+    setCurrentTableId,
     totalAmount: getTotalAmount(),
     getItemByHash,
     loadFromLocalStorage,

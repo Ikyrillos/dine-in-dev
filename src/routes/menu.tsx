@@ -89,7 +89,7 @@ export default function Menu() {
   );
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [orderNote, setOrderNote] = useState("");
-  const [discount, setDiscount] = useState(0);
+  const [discount, setDiscount] = useState<number | null>(null);
   const [dataLoaded, setDataLoaded] = useState(false);
 
   // Check if this is a pickup order (no tableId)
@@ -107,21 +107,26 @@ export default function Menu() {
   const { removeItem } = useRemoveFromLocalCart();
   const { updateQuantity } = useUpdateLocalCartItem();
   const { clearCart } = useClearLocalCart();
-  const { items: localCartItems, totalAmount: localCartTotal, loadFromLocalStorage } = useLocalCart();
+  const {
+    items: localCartItems,
+    totalAmount: localCartTotal,
+    setCurrentTableId
+  } = useLocalCart();
   const submitCartOperations = useSubmitCartOperations(isPickupOrder ? undefined : tableId || undefined);
   const { currencySymbol } = useCurrencyStore();
 
-  // Load local cart on component mount
+  // Set current table ID for local cart filtering
   useEffect(() => {
-    loadFromLocalStorage();
-  }, [loadFromLocalStorage]);
+    setCurrentTableId(isPickupOrder ? null : tableId);
+    // Note: setCurrentTableId automatically calls loadFromLocalStorage()
+  }, [tableId, isPickupOrder, setCurrentTableId]);
 
   // For table orders, we'll create a simple breakdown calculation
   const tableBreakdown = useMemo(() => {
-    if (discount <= 0) return null;
+    if ((discount || 0) <= 0) return null;
 
     const cartTotal = localCartTotal;
-    const discountAmount = cartTotal * (discount / 100); // Calculate discount as percentage of cart total
+    const discountAmount = cartTotal * ((discount || 0) / 100); // Calculate discount as percentage of cart total
     const newTotal = Math.max(0, cartTotal - discountAmount);
 
     return {
@@ -152,7 +157,7 @@ export default function Menu() {
   // Only save after initial data has been loaded to prevent overwriting
   useEffect(() => {
     if (!isPickupOrder && tableId && dataLoaded) {
-      setTableCheckoutData(tableId, { discount, notes });
+      setTableCheckoutData(tableId, { discount: (discount || 0), notes });
     }
   }, [discount, notes, tableId, isPickupOrder, dataLoaded]);
 
@@ -161,7 +166,7 @@ export default function Menu() {
 
   const totalAmount = useMemo(() => {
     // Use breakdown if discount is applied, otherwise use local cart total
-    if (breakdown?.totalAmount && discount > 0) {
+    if (breakdown?.totalAmount && (discount || 0) > 0) {
       return breakdown.totalAmount / 100;
     }
 
@@ -387,7 +392,7 @@ export default function Menu() {
           successUrl: "https://www.secondserving.uk/",
           addressId: "",
           note: notes,
-          discount: discount,
+          discount: (discount || 0),
           source: "Dine-in",
           paymentMethod: method,
         });
@@ -405,30 +410,22 @@ export default function Menu() {
     }
   };
 
-  // Conditional checkout
+  // Conditional checkout (now only for table orders)
   const handleCheckout = async () => {
     try {
       // Submit local cart operations to server
       await submitCartOperations.mutateAsync();
 
-      if (isPickupOrder) {
-        // For pickup orders, show payment options instead of direct checkout
-        setShowPaymentOptions(true);
-        return;
-      } else {
-        // Table checkout
-        const response = await oldCartApi.printPosOrder(tableId || "");
-        if (response) {
-          clearCart();
-          navigate({ to: `/tables` });
-        }
+      // Table checkout only (pickup orders use handlePaymentMethodSelect directly)
+      const response = await oldCartApi.printPosOrder(tableId || "");
+      if (response) {
+        clearCart();
+        navigate({ to: `/tables` });
       }
     } catch (error) {
       console.error("Error during checkout:", error);
     } finally {
-      if (!isPickupOrder) {
-        setShowConfirmDialog(false);
-      }
+      setShowConfirmDialog(false);
     }
   };
 
@@ -748,11 +745,76 @@ export default function Menu() {
                       Back
                     </Button>
                     <h3 className="font-semibold text-gray-900 text-lg my-4 text-center">
-                      Payment
+                      Confirm Pickup Order
                     </h3>
 
-                    {/* Payment Method Buttons */}
+                    {/* Cart Items Summary */}
+                    <ScrollArea className="max-h-64 mb-4">
+                      <div className="space-y-2">
+                        {cartItems.map((cartItem: any) => (
+                          <div
+                            key={cartItem.optionsHash}
+                            className="flex justify-between items-center p-2 bg-slate-50 rounded-lg"
+                          >
+                            <div className="flex-1">
+                              <p className="font-medium text-sm">
+                                {cartItem.menuItem.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Qty: {cartItem.quantity}
+                              </p>
+                              {cartItem.selectedOptions?.length > 0 && (
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {getSelectedChoiceNamesForLocalCartItem(cartItem).join(", ")}
+                                </p>
+                              )}
+                            </div>
+                            <p className="font-bold text-primary text-sm">
+                              {currencySymbol}
+                              {calculateLocalCartItemTotalPrice(cartItem).toFixed(2)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+
+                    {/* Show notes if any */}
+                    {orderNote && (
+                      <div className="mb-4 p-3 bg-slate-50 rounded-lg">
+                        <p className="text-sm font-medium mb-1">Special Instructions:</p>
+                        <p className="text-sm text-muted-foreground">{orderNote}</p>
+                      </div>
+                    )}
+
+                    {/* Discount Display for all orders */}
+                    {breakdown && breakdown.discount > 0 && (
+                      <div className="mb-4">
+                        <DiscountDisplay
+                          discount={breakdown.discount}
+                          subTotal={breakdown.subTotal || 0}
+                          totalAmount={breakdown.totalAmount}
+                          size="md"
+                        />
+                      </div>
+                    )}
+
+                    {/* Total Amount */}
+                    <div className="mb-6 pt-4 border-t border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold text-gray-900">
+                          Total
+                        </span>
+                        <span className="text-xl font-bold text-primary">
+                          {currencySymbol}{totalAmount.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Payment Method Selection */}
                     <div className="space-y-3">
+                      <p className="text-center text-sm font-medium text-gray-700 mb-3">
+                        Choose Payment Method
+                      </p>
                       <Button
                         variant="outline"
                         className="w-full justify-start h-14 text-base font-medium"
@@ -769,30 +831,6 @@ export default function Menu() {
                         <Banknote className="mr-3 h-5 w-5" />
                         Cash
                       </Button>
-                    </div>
-
-                    {/* Discount Display for all orders */}
-                    {breakdown && breakdown.discount > 0 && (
-                      <div className="mt-2">
-                        <DiscountDisplay
-                          discount={breakdown.discount}
-                          subTotal={breakdown.subTotal || 0}
-                          totalAmount={breakdown.totalAmount}
-                          size="md"
-                        />
-                      </div>
-                    )}
-
-                    {/* Total Amount */}
-                    <div className="mt-6 pt-6 border-t border-gray-200">
-                      <div className="flex justify-between items-center">
-                        <span className="text-lg font-semibold text-gray-900">
-                          Total
-                        </span>
-                        <span className="text-xl font-bold text-primary">
-                          {currencySymbol}{totalAmount.toFixed(2)}
-                        </span>
-                      </div>
                     </div>
                   </div>
                 )
@@ -998,18 +1036,27 @@ export default function Menu() {
                 <Label className="text-sm font-medium mt-4">
                   Discount Amount
                 </Label>
-                <Input
-                  type="text"
-                  placeholder="Enter discount amount"
-                  value={discount}
-                  onChange={(e) => {
-                    const val = Number(e.target.value);
-                    setDiscount(isNaN(val) ? 0 : val);
-                  }}
-                  className="mt-2"
-                  min="0"
-                  step="0.01"
-                />
+                <div className="flex items-center gap-2">
+                  {/* percent  center all */}
+                  <div className="flex items-center">
+                    <span className="text-sm mr-1 pt-2">
+                      %
+                    </span>
+                  </div>
+
+                  <Input
+                    type="text"
+                    placeholder="Enter discount amount"
+                    value={(discount || '').toString()}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setDiscount(isNaN(val) ? 0 : val);
+                    }}
+                    className="mt-2"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
               </div>
 
               {/* Discount Display in Confirm Dialog */}
@@ -1033,10 +1080,18 @@ export default function Menu() {
                 </span>
               </div>
               <Button
-                onClick={() => setShowConfirmDialog(true)}
+                onClick={() => {
+                  if (isPickupOrder) {
+                    // For pickup orders, go directly to payment options
+                    setShowPaymentOptions(true);
+                  } else {
+                    // For table orders, show confirmation dialog first
+                    setShowConfirmDialog(true);
+                  }
+                }}
                 className="inline-flex items-center justify-center gap-2 whitespace-nowrap ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-10 px-4 w-full bg-primary hover:bg-primary/90 text-white rounded-xl py-3 text-lg font-semibold"
               >
-                Confirm Order
+                {isPickupOrder ? "Choose Payment Method" : "Confirm Order"}
               </Button>
             </div>
           )

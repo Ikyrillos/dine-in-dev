@@ -11,6 +11,8 @@ import { generateOptionsHash } from '../utils/hash-generator';
 interface LocalCartState {
   items: LocalCartItem[];
   operations: BatchCartOperation[];
+  currentTableId: string | null;
+  setCurrentTableId: (tableId: string | null) => void;
   addItem: (menuItem: IMenuItem, quantity: number, selectedOptions: CartItemOption[]) => void;
   removeItem: (optionsHash: string) => void;
   updateItemQuantity: (optionsHash: string, quantity: number) => void;
@@ -25,9 +27,22 @@ interface LocalCartState {
 const CART_STORAGE_KEY = 'local-cart';
 const OPERATIONS_STORAGE_KEY = 'cart-operations';
 
+// Helper functions to generate table-specific storage keys
+const getTableStorageKey = (baseKey: string, tableId: string | null) => {
+  if (!tableId) return baseKey; // For pickup orders or when no table is specified
+  return `${baseKey}-table-${tableId}`;
+};
+
 export const useLocalCartStore = create<LocalCartState>((set, get) => ({
   items: [],
   operations: [],
+  currentTableId: null,
+
+  setCurrentTableId: (tableId) => {
+    set({ currentTableId: tableId });
+    // Load items and operations for the new table
+    get().loadFromLocalStorage();
+  },
 
   addItem: (menuItem, quantity, selectedOptions) => {
     const optionsHash = generateOptionsHash(menuItem._id, selectedOptions);
@@ -108,9 +123,13 @@ export const useLocalCartStore = create<LocalCartState>((set, get) => ({
         ];
       }
 
-      // Save to localStorage
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItems));
-      localStorage.setItem(OPERATIONS_STORAGE_KEY, JSON.stringify(newOperations));
+      // Save to localStorage with table-specific keys
+      const { currentTableId } = get();
+      const cartKey = getTableStorageKey(CART_STORAGE_KEY, currentTableId);
+      const operationsKey = getTableStorageKey(OPERATIONS_STORAGE_KEY, currentTableId);
+
+      localStorage.setItem(cartKey, JSON.stringify(newItems));
+      localStorage.setItem(operationsKey, JSON.stringify(newOperations));
 
       return { items: newItems, operations: newOperations };
     });
@@ -149,9 +168,10 @@ export const useLocalCartStore = create<LocalCartState>((set, get) => ({
         ];
       }
 
-      // Save to localStorage
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItems));
-      localStorage.setItem(OPERATIONS_STORAGE_KEY, JSON.stringify(newOperations));
+      // Save to localStorage with table-specific keys
+      const { currentTableId } = get();
+      localStorage.setItem(getTableStorageKey(CART_STORAGE_KEY, currentTableId), JSON.stringify(newItems));
+      localStorage.setItem(getTableStorageKey(OPERATIONS_STORAGE_KEY, currentTableId), JSON.stringify(newOperations));
 
       return { items: newItems, operations: newOperations };
     });
@@ -210,22 +230,25 @@ export const useLocalCartStore = create<LocalCartState>((set, get) => ({
         ];
       }
 
-      // Save to localStorage
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItems));
-      localStorage.setItem(OPERATIONS_STORAGE_KEY, JSON.stringify(newOperations));
+      // Save to localStorage with table-specific keys
+      const { currentTableId } = get();
+      localStorage.setItem(getTableStorageKey(CART_STORAGE_KEY, currentTableId), JSON.stringify(newItems));
+      localStorage.setItem(getTableStorageKey(OPERATIONS_STORAGE_KEY, currentTableId), JSON.stringify(newOperations));
 
       return { items: newItems, operations: newOperations };
     });
   },
 
   clearCart: () => {
-    localStorage.removeItem(CART_STORAGE_KEY);
-    localStorage.removeItem(OPERATIONS_STORAGE_KEY);
+    const { currentTableId } = get();
+    localStorage.removeItem(getTableStorageKey(CART_STORAGE_KEY, currentTableId));
+    localStorage.removeItem(getTableStorageKey(OPERATIONS_STORAGE_KEY, currentTableId));
     set({ items: [], operations: [] });
   },
 
   clearOperations: () => {
-    localStorage.removeItem(OPERATIONS_STORAGE_KEY);
+    const { currentTableId } = get();
+    localStorage.removeItem(getTableStorageKey(OPERATIONS_STORAGE_KEY, currentTableId));
     set((state) => ({ ...state, operations: [] }));
   },
 
@@ -257,12 +280,19 @@ export const useLocalCartStore = create<LocalCartState>((set, get) => ({
 
   loadFromLocalStorage: () => {
     try {
-      const storedItems = localStorage.getItem(CART_STORAGE_KEY);
-      const storedOperations = localStorage.getItem(OPERATIONS_STORAGE_KEY);
+      const { currentTableId } = get();
+      const cartKey = getTableStorageKey(CART_STORAGE_KEY, currentTableId);
+      const operationsKey = getTableStorageKey(OPERATIONS_STORAGE_KEY, currentTableId);
+
+      const storedItems = localStorage.getItem(cartKey);
+      const storedOperations = localStorage.getItem(operationsKey);
+
+      const items = storedItems ? JSON.parse(storedItems) : [];
+      const operations = storedOperations ? JSON.parse(storedOperations) : [];
 
       set({
-        items: storedItems ? JSON.parse(storedItems) : [],
-        operations: storedOperations ? JSON.parse(storedOperations) : []
+        items,
+        operations
       });
     } catch (error) {
       console.error('Failed to load cart from localStorage:', error);

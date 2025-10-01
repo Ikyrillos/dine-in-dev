@@ -34,7 +34,7 @@ class LocalCartRepository {
 
     const url = tableId
       ? `${BASE_URL}/tables/${tableId}/batch-actions`
-      : `${BASE_URL}/pickup-cart/batch`;
+      : `${BASE_URL}/pickup-cart/batch-actions`;
 
     return await makeRequest({
       method: "POST",

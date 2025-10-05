@@ -91,6 +91,7 @@ export default function Menu() {
   const [orderNote, setOrderNote] = useState("");
   const [discount, setDiscount] = useState<number | null>(null);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card">("cash");
 
   // Check if this is a pickup order (no tableId)
   const tableId = new URLSearchParams(window.location.search).get("tableId");
@@ -417,7 +418,7 @@ export default function Menu() {
       await submitCartOperations.mutateAsync();
 
       // Table checkout only (pickup orders use handlePaymentMethodSelect directly)
-      const response = await oldCartApi.printPosOrder(tableId || "");
+      const response = await oldCartApi.printPosOrder(tableId || "", notes, (discount || 0), "Dine-in", paymentMethod);
       if (response) {
         clearCart();
         navigate({ to: `/tables` });
@@ -1202,6 +1203,29 @@ export default function Menu() {
               <p className="text-sm text-muted-foreground">
                 {isPickupOrder ? orderNote : notes}
               </p>
+            </div>
+          )}
+
+          {/* Payment Method Selection for Table Orders */}
+          {!isPickupOrder && (
+            <div className="mt-4">
+              <Label className="text-sm font-medium mb-3 block">Payment Method</Label>
+              <RadioGroup value={paymentMethod} onValueChange={(value: "cash" | "card") => setPaymentMethod(value)}>
+                <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-slate-50">
+                  <RadioGroupItem value="cash" id="cash" />
+                  <Label htmlFor="cash" className="flex items-center cursor-pointer flex-1">
+                    <Banknote className="mr-2 h-4 w-4" />
+                    Cash
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-slate-50">
+                  <RadioGroupItem value="card" id="card" />
+                  <Label htmlFor="card" className="flex items-center cursor-pointer flex-1">
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Card
+                  </Label>
+                </div>
+              </RadioGroup>
             </div>
           )}
 

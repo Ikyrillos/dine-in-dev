@@ -40,10 +40,24 @@ class CartRepository {
     }
 
     // Post /tables/:id/print-pos-order
-    async printPosOrder(tableId: string): Promise<unknown> {
-        return makeRequest<void, unknown>({
+    async printPosOrder(tableId: string, note?: string, discount?: number, source?: string, paymentMethod?: string): Promise<unknown> {
+
+        return makeRequest<{
+            tableId: string;
+            note?: string;
+            discount?: number;
+            source?: string;
+            paymentMethod?: string;
+        }, unknown>({
             method: "POST",
             url: `${BASE_URL}/tables/${tableId}/print-pos-order`,
+            data: {
+                tableId,
+                note,
+                discount,
+                source: source || "Dine-in",
+                paymentMethod: paymentMethod || "cash",
+            },
         });
     }
     /**

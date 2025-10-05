@@ -362,7 +362,7 @@ export default function TableSelection() {
                 <div className="px-4">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                    Note:
+                      Refresh:
                     </h3>
 
                     <Button

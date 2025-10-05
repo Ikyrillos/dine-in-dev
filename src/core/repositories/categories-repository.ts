@@ -85,10 +85,10 @@ class MenuCategoryRepository {
         });
     }
 
-    async fetchAllMenuCategories() {
+    async fetchAllMenuCategories(menuId: string) {
         return await makeRequest<void, IMenuCategory[]>({
             method: 'GET',
-            url: `${BASE_URL}/menu-categories`,
+            url: `${BASE_URL}/menu-categories/by-menu/${menuId}`,
         });
     }
 }

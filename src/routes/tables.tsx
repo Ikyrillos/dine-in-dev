@@ -360,19 +360,15 @@ export default function TableSelection() {
               </div>
               <div className=" h-20">
                 <div className="px-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                      Refresh:
-                    </h3>
-
+                  <div className="flex items-end justify-end mb-4">
                     <Button
-                      variant="outline"
-                      className="text-sm px-2 mb-3 h-8"
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-6 py-3 flex items-center gap-2 text-sm font-medium shadow-lg transition-all duration-200 hover:shadow-xl"
                       onClick={() => navigate({
                         reloadDocument: true
                       })}
                     >
-                      <RefreshCcw className="" />
+                      <RefreshCcw className="h-4 w-4" />
+                      Refresh
                     </Button>
                   </div>
                   <div className="flex flex-wrap gap-4 text-sm">

@@ -3,9 +3,9 @@
 const APP_ENV = import.meta.env.VITE_APP_ENV || "production";
 
 export const BASE_URL =
-    // APP_ENV === "development"
-    // ? "https://api-dev.tawila.co.uk"
-    // :
+    APP_ENV === "development"
+        ? "https://api-dev.tawila.co.uk"
+        :
 
     "https://api.tawila.co.uk";
 

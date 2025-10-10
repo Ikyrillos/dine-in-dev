@@ -167,7 +167,7 @@ export default function Menu() {
 
   const totalAmount = useMemo(() => {
     // Use breakdown if discount is applied, otherwise use local cart total
-    if (breakdown?.totalAmount && (discount || 0) > 0) {
+    if (breakdown && (discount || 0) > 0) {
       return breakdown.totalAmount / 100;
     }
 
@@ -1046,15 +1046,24 @@ export default function Menu() {
                   </div>
 
                   <Input
-                    type="text"
+                    type="number"
                     placeholder="Enter discount amount"
                     value={(discount || '').toString()}
                     onChange={(e) => {
                       const val = Number(e.target.value);
-                      setDiscount(isNaN(val) ? 0 : val);
+                      if (isNaN(val)) {
+                        setDiscount(0);
+                      } else if (val < 0) {
+                        setDiscount(0);
+                      } else if (val > 100) {
+                        setDiscount(100);
+                      } else {
+                        setDiscount(val);
+                      }
                     }}
                     className="mt-2"
                     min="0"
+                    max="100"
                     step="0.01"
                   />
                 </div>
@@ -1226,6 +1235,18 @@ export default function Menu() {
                   </Label>
                 </div>
               </RadioGroup>
+            </div>
+          )}
+
+          {/* Discount Display in Confirmation Dialog */}
+          {breakdown && breakdown.discount > 0 && (
+            <div className="mt-4">
+              <DiscountDisplay
+                discount={breakdown.discount}
+                subTotal={breakdown.subTotal || 0}
+                totalAmount={breakdown.totalAmount}
+                size="md"
+              />
             </div>
           )}
 

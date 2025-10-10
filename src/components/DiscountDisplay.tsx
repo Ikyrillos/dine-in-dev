@@ -49,9 +49,11 @@ export function DiscountDisplay({
           <Percent className={`${iconSize} text-green-600`} />
         </>
       )}
-      <span className="font-medium text-green-800 text-sm">Discount Applied</span>
+      <span className="font-medium text-green-800 text-sm">
+        {discountAmount === subTotalAmount ? "100% Discount - Free!" : "Discount Applied"}
+      </span>
       <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
-        {currencySymbol}{discountAmount.toFixed(2)}
+        {discountAmount === subTotalAmount ? "FREE" : `${currencySymbol}${discountAmount.toFixed(2)}`}
       </Badge>
     </div>
   );

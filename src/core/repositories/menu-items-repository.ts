@@ -96,6 +96,18 @@ class MenuItemRepository {
             url: `${BASE_URL}/menu-items`,
         });
     }
+
+    /**
+     * Retrieve menu items by menu ID
+     * @param menuId Menu ID
+     * @returns List of menu items for the specific menu
+     */
+    async fetchMenuItemsByMenu(menuId: string) {
+        return await makeRequest<void, IMenuItem[]>({
+            method: 'GET',
+            url: `${BASE_URL}/menu-items/by-menu/${menuId}`,
+        });
+    }
 }
 
 export const menuItemApi = new MenuItemRepository();

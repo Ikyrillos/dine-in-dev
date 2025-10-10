@@ -97,6 +97,7 @@ export default function Menu() {
   const tableId = new URLSearchParams(window.location.search).get("tableId");
   const tableName = new URLSearchParams(window.location.search).get("name");
   const isPickupOrder = tableName?.toLowerCase().includes("pickup") ?? false;
+  console.log("isPickupOrder:", isPickupOrder);
 
   // Hooks for categories and menu items
   const { data: categories, isLoading: categoriesLoading } =
@@ -1215,10 +1216,10 @@ export default function Menu() {
             </div>
           )}
 
-          {/* Payment Method Selection for Table Orders */}
-          {!isPickupOrder && (
+          {/* Payment Method Selection for Table Orders (Optional) */}
+          {isPickupOrder && (
             <div className="mt-4">
-              <Label className="text-sm font-medium mb-3 block">Payment Method</Label>
+              <Label className="text-sm font-medium mb-3 block">Payment Method (Optional)</Label>
               <RadioGroup value={paymentMethod} onValueChange={(value: "cash" | "card") => setPaymentMethod(value)}>
                 <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-slate-50">
                   <RadioGroupItem value="cash" id="cash" />

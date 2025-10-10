@@ -295,7 +295,10 @@ export default function TableSelection() {
     }, 1000);
   };
 
-  const totalAmount = cart?.totalAmount || 0;
+  // Calculate final total amount considering discount
+  const totalAmount = (breakdown && discount > 0)
+    ? (breakdown.totalAmount / 100)
+    : (cart?.totalAmount || 0);
   const cartItems = cart?.items || [];
 
   if (isRestaurantLoading || isTablesLoading) {
@@ -647,7 +650,7 @@ export default function TableSelection() {
                             Total
                           </span>
                           <span className="text-xl font-bold text-primary">
-                            £{totalAmount.toFixed(2)}
+                            {currencySymbol}{totalAmount.toFixed(2)}
                           </span>
                         </div>
                       </div>

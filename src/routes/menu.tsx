@@ -139,7 +139,7 @@ export default function Menu() {
       shippingCost: 0,
       applicationFeeAmount: 0,
     };
-  }, [discount, localCartTotal]);
+  }, [discount, localCartTotal, localCartItems.length]);
 
   // Use breakdown based on discount
   const breakdown = tableBreakdown;
@@ -177,6 +177,7 @@ export default function Menu() {
     breakdown?.totalAmount,
     discount,
     localCartTotal,
+    localCartItems.length,
   ]);
 
   // Computed values

@@ -2,7 +2,7 @@
 
 import TawilaShimmer from "@/components/LoadingBranded";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   AlertDialog,
@@ -41,11 +41,11 @@ import {
 import { useGetRestaurantByIdParams } from "@/core/hooks/use-restaurant-hooks";
 import { useGetTables } from "@/core/hooks/use-tables-hooks";
 import type { Table } from "@/core/models/TableModel";
-import { useGetBreakDown } from "@/features/cart/cart/hooks/cart-hooks";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   clearTableCheckoutData,
   getTableCheckoutData,
+  setTableCheckoutData,
 } from "@/utils/table-checkout-storage";
 
 import { DiscountDisplay } from "@/components/DiscountDisplay";
@@ -165,10 +165,23 @@ export default function TableSelection() {
   const clearCartMutation = useClearCart();
   const cartCheckout = useCheckoutCart();
 
-  // Get breakdown for discount display
-  const { data: breakdown } = useGetBreakDown(
-    discount > 0 ? discount.toString() : undefined,
-  );
+  // Calculate breakdown manually for table carts (since useGetBreakDown is for pickup carts)
+  const breakdown = useMemo(() => {
+    if ((discount || 0) <= 0 || !cart?.totalAmount) return null;
+
+    const cartTotal = cart.totalAmount;
+    const discountAmount = cartTotal * ((discount || 0) / 100);
+    const newTotal = Math.max(0, cartTotal - discountAmount);
+
+    return {
+      discount: discountAmount * 100, // Convert to cents for consistency
+      subTotal: cartTotal * 100, // Convert to cents
+      totalAmount: newTotal * 100, // Convert to cents
+      tax: 0,
+      shippingCost: 0,
+      applicationFeeAmount: 0,
+    };
+  }, [discount, cart?.totalAmount, cart?.items?.length]);
 
   useEffect(() => {
     if (restaurant?.data) {
@@ -199,8 +212,18 @@ export default function TableSelection() {
     }
   }, [selectedTable]);
 
+
   const handleRemoveItem = (identifier: string, itemName: string) => {
     setItemToRemove({ identifier, name: itemName });
+  };
+
+  const handleClearDiscount = () => {
+    if (selectedTable) {
+      setDiscount(0);
+      // Clear from localStorage too
+      const currentData = getTableCheckoutData(selectedTable.id);
+      setTableCheckoutData(selectedTable.id, { ...currentData, discount: 0 });
+    }
   };
 
   const confirmRemoveItem = () => {
@@ -295,10 +318,21 @@ export default function TableSelection() {
     }, 1000);
   };
 
-  // Calculate final total amount considering discount
-  const totalAmount = (breakdown && discount > 0)
-    ? (breakdown.totalAmount / 100)
-    : (cart?.totalAmount || 0);
+  // Calculate final total amount considering discount - force recalculation on cart changes
+  const totalAmount = useMemo(() => {
+    // If discount is 0 or negative, always use cart total regardless of breakdown
+    if (discount <= 0) {
+      return cart?.totalAmount || 0;
+    }
+
+    // Only use breakdown if we have a valid discount greater than 0 AND valid breakdown data
+    if (breakdown && breakdown.totalAmount !== undefined && breakdown.totalAmount !== null) {
+      return breakdown.totalAmount / 100;
+    }
+
+    // Fallback to cart total if breakdown is invalid
+    return cart?.totalAmount || 0;
+  }, [breakdown, discount, cart?.totalAmount, cart?.items?.length]);
   const cartItems = cart?.items || [];
 
   if (isRestaurantLoading || isTablesLoading) {
@@ -527,6 +561,14 @@ export default function TableSelection() {
                           }}
                         >
                           Clear Table
+                      </Button>
+
+                      <Button
+                          variant="outline"
+                          className="mb-4 w-full"
+                          onClick={handleClearDiscount}
+                        >
+                          Clear Discount ({discount}%)
                       </Button>
 
                       {showPaymentOptions

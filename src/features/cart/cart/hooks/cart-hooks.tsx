@@ -45,8 +45,11 @@ export const useGetBreakDown = (promoCode?: string) => {
       }
     },
     staleTime: 0,
+    cacheTime: 0,
     retry: 1,
     enabled: true,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 };
 

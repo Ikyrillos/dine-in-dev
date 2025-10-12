@@ -35,6 +35,7 @@ import {
   ChevronDown,
   ChevronUp,
   CreditCard,
+  Loader2,
   Minus,
   Plus,
   Search,
@@ -92,6 +93,7 @@ export default function Menu() {
   const [discount, setDiscount] = useState<number | null>(null);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card">("cash");
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   // Check if this is a pickup order (no tableId)
   const tableId = new URLSearchParams(window.location.search).get("tableId");
@@ -415,6 +417,7 @@ export default function Menu() {
 
   // Conditional checkout (now only for table orders)
   const handleCheckout = async () => {
+    setIsCheckingOut(true);
     try {
       // Submit local cart operations to server
       await submitCartOperations.mutateAsync();
@@ -428,6 +431,7 @@ export default function Menu() {
     } catch (error) {
       console.error("Error during checkout:", error);
     } finally {
+      setIsCheckingOut(false);
       setShowConfirmDialog(false);
     }
   };
@@ -1147,7 +1151,7 @@ export default function Menu() {
       )}
 
       {/* Confirm Order Dialog */}
-      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+      <Dialog open={showConfirmDialog} onOpenChange={isCheckingOut ? undefined : setShowConfirmDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Confirm Order</DialogTitle>
@@ -1264,12 +1268,17 @@ export default function Menu() {
             <Button
               variant="outline"
               onClick={() => setShowConfirmDialog(false)}
+              disabled={isCheckingOut}
             >
               Cancel
             </Button>
-            <Button onClick={handleCheckout}>
-              <Check className="w-4 h-4 mr-2" />
-              Confirm Order
+            <Button onClick={handleCheckout} disabled={isCheckingOut}>
+              {isCheckingOut ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4 mr-2" />
+              )}
+              {isCheckingOut ? "Processing..." : "Confirm Order"}
             </Button>
           </DialogFooter>
         </DialogContent>

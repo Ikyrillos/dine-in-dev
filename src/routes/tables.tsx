@@ -610,7 +610,8 @@ export default function TableSelection() {
                           </div>
                         )
                         : (
-                          <div className="">
+                          <ScrollArea className="max-h-64">
+                            <div className="space-y-4">
                             {cartItems.map((item) => (
                               <Card
                                 key={item.optionsHash}
@@ -667,7 +668,8 @@ export default function TableSelection() {
                                 </CardContent>
                               </Card>
                             ))}
-                          </div>
+                            </div>
+                          </ScrollArea>
                         )}
                     </div>
                   </ScrollArea>

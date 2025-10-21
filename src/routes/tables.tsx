@@ -291,12 +291,12 @@ export default function TableSelection() {
     if (method === "cash") {
       // Process cash payment
       handleConfirmOrder(method);
-    } else if (method === "card") {
+    } else if (method === "credit") {
       handleConfirmOrder(method);
     }
   };
 
-  const handleConfirmOrder = (paymentMethod: "cash" | "card") => {
+  const handleConfirmOrder = (paymentMethod: "cash" | "credit") => {
     if (!selectedTable) return;
     cartCheckout.mutate({
       tableId: selectedTable.id,
@@ -592,7 +592,7 @@ export default function TableSelection() {
                                 variant="outline"
                                 className="w-full justify-start h-14 text-base font-medium"
                                 onClick={() =>
-                                  handlePaymentMethodSelect("card")}
+                                  handlePaymentMethodSelect("credit")}
                               >
                                 <CreditCard className="mr-3 h-5 w-5" />
                                 Card

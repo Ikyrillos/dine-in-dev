@@ -68,9 +68,9 @@ export const useCheckoutCart = () => {
             tableId: string;
             note?: string;
             discount?: number;
-            paymentMethod: "cash" | "card";
+            paymentMethod: "cash" | "credit";
         }
-        ) => oldCartApi.checkoutCart(tableId, note, discount, paymentMethod),
+        ) => oldCartApi.checkoutCart(tableId, paymentMethod, note, discount,),
         onSuccess: (_response, data) => {
             // Invalidate the cart query to ensure it refetch
             queryClient.invalidateQueries({

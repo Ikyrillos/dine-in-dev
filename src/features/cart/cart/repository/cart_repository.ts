@@ -109,7 +109,7 @@ class CartRepository {
                 note,
                 discount: discount,
                 source: 'Dine-in',
-                paymentMethod: paymentMethod || "cash",
+                paymentMethod: paymentMethod,
             },
             headers: { "x-foundation-id": foundationId || "" },
         });

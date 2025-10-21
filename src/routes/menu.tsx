@@ -385,7 +385,7 @@ export default function Menu() {
   };
 
   // Payment method selection for pickup orders
-  const handlePaymentMethodSelect = async (method: "cash" | "card") => {
+  const handlePaymentMethodSelect = async (method: "cash" | "credit") => {
     try {
       // First submit the local cart operations to the server
       await submitCartOperations.mutateAsync();
@@ -825,7 +825,7 @@ export default function Menu() {
                       <Button
                         variant="outline"
                         className="w-full justify-start h-14 text-base font-medium"
-                        onClick={() => handlePaymentMethodSelect("card")}
+                        onClick={() => handlePaymentMethodSelect("credit")}
                       >
                         <CreditCard className="mr-3 h-5 w-5" />
                         Card

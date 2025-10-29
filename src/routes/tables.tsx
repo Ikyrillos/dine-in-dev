@@ -140,6 +140,7 @@ export default function TableSelection() {
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
 
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"cash" | "credit" | null>(null);
   const [orderNotes, setOrderNotes] = useState("");
   const [discount, setDiscount] = useState<number>(0);
   const [restaurantData, setRestaurantData] = useState<any>(null);
@@ -189,6 +190,19 @@ export default function TableSelection() {
       refetchTables();
     }
   }, [restaurant?.data, refetchTables]);
+
+  // Poll tables every 3 seconds to keep UI fresh
+  useEffect(() => {
+    const id = setInterval(() => {
+      try {
+        refetchTables();
+      } catch (e) {
+        // swallow; refetchTables usually handles its own errors
+      }
+    }, 3000);
+
+    return () => clearInterval(id);
+  }, [refetchTables]);
 
   useEffect(() => {
     if (!restaurantData) return;
@@ -287,14 +301,7 @@ export default function TableSelection() {
   const handlePickupOrder = () =>
     navigate({ to: "/menu", search: { name: "pickup" } });
 
-  const handlePaymentMethodSelect = (method: string) => {
-    if (method === "cash") {
-      // Process cash payment
-      handleConfirmOrder(method);
-    } else if (method === "credit") {
-      handleConfirmOrder(method);
-    }
-  };
+
 
   const handleConfirmOrder = (paymentMethod: "cash" | "credit") => {
     if (!selectedTable) return;
@@ -577,7 +584,10 @@ export default function TableSelection() {
                             <Button
                               variant="ghost"
                               className="w-full justify-start h-12"
-                              onClick={() => setShowPaymentOptions(false)}
+                              onClick={() => {
+                                setShowPaymentOptions(false);
+                                setSelectedPaymentMethod(null);
+                              }}
                             >
                               <ArrowLeft className="mr-2 h-4 w-4" />
                               Back
@@ -586,25 +596,58 @@ export default function TableSelection() {
                               Payment
                             </h3>
 
-                            {/* Payment Method Buttons */}
-                            <div className="space-y-3">
+                            <p className="text-sm text-gray-500 text-center mb-4">
+                              Please select a payment method to complete the order
+                            </p>
+
+                            {/* Payment Method Cards */}
+                            <div className="grid grid-cols-2 gap-3">
+                              <div
+                                role="button"
+                                aria-pressed={selectedPaymentMethod === "credit"}
+                                onClick={() => setSelectedPaymentMethod("credit")}
+                                className={`p-4 rounded-lg border cursor-pointer flex items-center gap-3 justify-start transition-shadow ${selectedPaymentMethod === "credit" ? "ring-2 ring-primary bg-primary/5 border-primary" : "border-gray-200 hover:shadow-sm"}`}
+                              >
+                                <CreditCard className="h-6 w-6 text-gray-700 ml-1" />
+                                <div className="text-left">
+                                  <div className="font-medium">Card</div>
+                                  <div className="text-xs text-gray-500">Pay by credit/debit card</div>
+                                </div>
+                              </div>
+
+                              <div
+                                role="button"
+                                aria-pressed={selectedPaymentMethod === "cash"}
+                                onClick={() => setSelectedPaymentMethod("cash")}
+                                className={`p-4 rounded-lg border cursor-pointer flex items-center gap-3 justify-start transition-shadow ${selectedPaymentMethod === "cash" ? "ring-2 ring-primary bg-primary/5 border-primary" : "border-gray-200 hover:shadow-sm"}`}
+                              >
+                                <Banknote className="h-6 w-6 text-gray-700 ml-1" />
+                                <div className="text-left">
+                                  <div className="font-medium">Cash</div>
+                                  <div className="text-xs text-gray-500">Pay with cash at the counter</div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="mt-4 flex gap-3">
                               <Button
                                 variant="outline"
-                                className="w-full justify-start h-14 text-base font-medium"
-                                onClick={() =>
-                                  handlePaymentMethodSelect("credit")}
+                                className="flex-1"
+                                onClick={() => {
+                                  setShowPaymentOptions(false);
+                                  setSelectedPaymentMethod(null);
+                                }}
                               >
-                                <CreditCard className="mr-3 h-5 w-5" />
-                                Card
+                                Cancel
                               </Button>
                               <Button
-                                variant="outline"
-                                className="w-full justify-start h-14 text-base font-medium"
-                                onClick={() =>
-                                  handlePaymentMethodSelect("cash")}
+                                className="flex-1 bg-primary hover:bg-primary/90 text-white"
+                                disabled={!selectedPaymentMethod}
+                                onClick={() => selectedPaymentMethod && handleConfirmOrder(selectedPaymentMethod)}
                               >
-                                <Banknote className="mr-3 h-5 w-5" />
-                                Cash
+                                {selectedPaymentMethod
+                                  ? `Confirm & Pay (${selectedPaymentMethod === "cash" ? "Cash" : "Card"})`
+                                  : "Select payment method"}
                               </Button>
                             </div>
                           </div>

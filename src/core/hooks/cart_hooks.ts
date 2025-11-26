@@ -164,6 +164,21 @@ export const useClearCart = () => {
 };
 
 /**
+ * Hook to print cart
+ */
+export const usePrintCart = () => {
+    return useMutation({
+        mutationFn: (tableId: string) => oldCartApi.printCart(tableId),
+        onSuccess: () => {
+            console.log("Cart printed successfully");
+        },
+        onError: (error) => {
+            console.error("Error printing cart:", error);
+        },
+    });
+};
+
+/**
  * Combined hook for all cart operations
  * Provides all cart-related mutations and queries in one place
  */

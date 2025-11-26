@@ -120,6 +120,20 @@ class CartRepository {
     }
 
     /**
+     * Print cart for a table
+     * @param tableId Table ID
+     * @returns Print response data
+     */
+    async printCart(tableId: string) {
+        const foundationId = localStorage.getItem("x-foundation-id");
+        return await makeRequest<void, unknown>({
+            method: "POST",
+            url: `${BASE_URL}/tables/${tableId}/print`,
+            headers: { "x-foundation-id": foundationId || "" },
+        });
+    }
+
+    /**
      * Get table cart by fetching table data (assuming cart is part of table data)
      * @param tableId Table ID
      * @returns Table data with cart information

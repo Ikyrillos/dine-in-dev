@@ -36,7 +36,8 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   useCartOperations,
   useCheckoutCart,
-  useClearCart
+  useClearCart,
+  usePrintCart
 } from "@/core/hooks/cart_hooks";
 import { useGetRestaurantByIdParams } from "@/core/hooks/use-restaurant-hooks";
 import { useGetTables } from "@/core/hooks/use-tables-hooks";
@@ -165,6 +166,7 @@ export default function TableSelection() {
 
   const clearCartMutation = useClearCart();
   const cartCheckout = useCheckoutCart();
+  const printCartMutation = usePrintCart();
 
   // Calculate breakdown manually for table carts (since useGetBreakDown is for pickup carts)
   const breakdown = useMemo(() => {
@@ -545,7 +547,15 @@ export default function TableSelection() {
                       <h2 className="text-xl font-bold text-gray-900">
                         {selectedTable.name}
                       </h2>
-                      {getStatusBadge(selectedTable.status)}
+                      <div className="flex items-center gap-2 flex-col">
+                        {getStatusBadge(selectedTable.status)}
+                        <Button
+                          onClick={() => printCartMutation.mutate(selectedTable.id)}
+                          disabled={printCartMutation.isPending}
+                        >
+                          {printCartMutation.isPending ? "Printing..." : "Print Receipt"}
+                        </Button>
+                      </div>
                     </div>
                     <p className="text-sm text-gray-500 mt-1 capitalize">
                       {selectedTable.status}

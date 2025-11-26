@@ -97,6 +97,18 @@ class CartRepository {
         return data;
     }
 
+    async printCart(
+        id: string
+    ) {
+        const foundationId = localStorage.getItem("x-foundation-id");
+        const { data } = await makeRequest<unknown, ICart>({
+            method: "POST",
+            url: `${BASE_URL}/tables/${id}/print`,
+            headers: { "x-foundation-id": foundationId || "" },
+        });
+        return data;
+    }
+
     async postCheckout({ successUrl, failUrl, addressId, note, discount, paymentMethod }: CheckoutData): Promise<CheckoutResponse> {
         const foundationId = localStorage.getItem("x-foundation-id");
         const { data } = await makeRequest<CheckoutData, CheckoutResponse>({
